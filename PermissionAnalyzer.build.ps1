@@ -77,7 +77,7 @@ task Test {
     $pesterConfig.CodeCoverage.OutputPath = Join-Path $PSScriptRoot 'CoverageResults.xml'
     $pesterConfig.CodeCoverage.Path = $Config.CoveragePaths | ForEach-Object {
         Join-Path $PSScriptRoot $_
-    }
+    } | Where-Object { Test-Path $_ }
 
     $result = Invoke-Pester -Configuration $pesterConfig
     assert ($result.FailedCount -eq 0) "Pester: $($result.FailedCount) test(s) failed."
