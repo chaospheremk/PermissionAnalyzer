@@ -1,0 +1,112 @@
+# Module documentation workflow — PlatyPS + Zensical
+# Reads committed PlatyPS markdown from docs/commands/ (generated locally
+# via Invoke-Build Docs, verified by Invoke-Build AssertDocsClean in CI).
+# Exports MAML XML for Get-Help, builds the site with Zensical, deploys to GitHub Pages.
+
+name: Publish Docs
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'docs/**'
+      - 'mkdocs.yml'
+      - 'requirements.txt'
+      - '**/*.psd1'
+      - '**/*.psm1'
+      - 'Public/**'
+      - 'Private/**'
+      - '*.build.ps1'
+      - 'build.config.psd1'
+      - '.github/workflows/docs.yml'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    name: Build and Deploy
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Get cache week
+        id: week
+        run: echo "week=$(date +%Y-W%V)" >> $GITHUB_OUTPUT
+
+      - name: Cache PowerShell modules
+        uses: actions/cache@v5
+        with:
+          path: ~/.local/share/powershell/Modules
+          key: ps-docs-${{ steps.week.outputs.week }}-${{ hashFiles('.github/workflows/docs.yml') }}
+          restore-keys: |
+            ps-docs-
+
+      - name: Install PlatyPS
+        shell: pwsh
+        run: |
+          if (-not (Get-Module -ListAvailable -Name Microsoft.PowerShell.PlatyPS)) {
+              Install-PSResource -Name Microsoft.PowerShell.PlatyPS -Scope CurrentUser -TrustRepository
+          }
+
+      - name: Install PowerShell dependencies
+        shell: pwsh
+        run: |
+          foreach ($mod in @(
+              'Microsoft.Graph.Authentication',
+              'Az.Accounts',
+              'Az.Resources',
+              'Az.OperationalInsights'
+          )) {
+              if (-not (Get-Module -ListAvailable -Name $mod)) {
+                  Install-Module -Name $mod -Force -Scope CurrentUser
+              }
+          }
+
+      - name: Export MAML help from committed markdown
+        shell: pwsh
+        run: |
+          Import-Module ./PermissionAnalyzer.psd1 -Force
+          Import-Module Microsoft.PowerShell.PlatyPS
+
+          New-Item -ItemType Directory -Path ./en-US -Force | Out-Null
+          $measured = Measure-PlatyPSMarkdown -Path ./docs/commands/*.md
+          $cmdFiles = $measured.Where({ $_.Filetype -match 'CommandHelp' })
+          $imported = foreach ($f in $cmdFiles) { Import-MarkdownCommandHelp -Path $f.FilePath }
+          $imported | Export-MamlCommandHelp -OutputFolder ./en-US -Force
+
+          Remove-Module PermissionAnalyzer -Force
+          Write-Host "Exported MAML for $($imported.Count) commands"
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install Zensical
+        run: pip install -r requirements.txt
+
+      - name: Build site
+        run: zensical build
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

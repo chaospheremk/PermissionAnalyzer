@@ -1,0 +1,57 @@
+# Automated pre-commit hook version updates
+# Runs weekly to check for newer versions of pre-commit hooks.
+# Creates a PR on dev if updates are found.
+
+name: Update Pre-Commit Hooks
+
+on:
+  schedule:
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    name: Update Hooks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: dev
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install pre-commit
+        run: pip install pre-commit
+
+      - name: Run autoupdate
+        run: pre-commit autoupdate
+
+      - name: Check for changes
+        id: diff
+        run: |
+          if git diff --quiet .pre-commit-config.yaml; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Pull Request
+        if: steps.diff.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: update/pre-commit-hooks
+          base: main
+          title: "chore: update pre-commit hooks"
+          body: |
+            Automated update of pre-commit hook versions via `pre-commit autoupdate`.
+
+            Review the version changes in `.pre-commit-config.yaml` before merging.
+          commit-message: "chore: update pre-commit hooks"
+          labels: dependencies

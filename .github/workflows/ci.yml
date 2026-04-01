@@ -1,0 +1,236 @@
+# Standardized CI workflow for PermissionAnalyzer (Invoke-Build)
+# Jobs: changes -> lint -> test -> docs-check -> secret-scan -> ci-gate
+
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  changes:
+    name: Detect Changes
+    if: github.actor != 'claude[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      powershell: ${{ steps.filter.outputs.powershell }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: dorny/paths-filter@v4
+        id: filter
+        with:
+          filters: |
+            powershell:
+              - '**/*.ps1'
+              - '**/*.psm1'
+              - '**/*.psd1'
+              - 'PSScriptAnalyzerSettings.psd1'
+              - '*.build.ps1'
+              - 'build.config.psd1'
+              - 'Data/**'
+              - '.github/workflows/ci.yml'
+
+  lint:
+    name: PSScriptAnalyzer
+    needs: changes
+    if: github.actor != 'claude[bot]' && needs.changes.outputs.powershell == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Get cache week
+        id: week
+        run: echo "week=$(date +%Y-W%V)" >> $GITHUB_OUTPUT
+
+      - name: Cache PowerShell modules
+        uses: actions/cache@v5
+        with:
+          path: ~/.local/share/powershell/Modules
+          key: ps-lint-${{ steps.week.outputs.week }}-${{ hashFiles('.github/workflows/ci.yml') }}
+          restore-keys: |
+            ps-lint-
+
+      - name: Install build dependencies
+        shell: pwsh
+        run: |
+          foreach ($mod in @('InvokeBuild', 'PSScriptAnalyzer')) {
+              if (-not (Get-Module -ListAvailable -Name $mod)) {
+                  Install-Module -Name $mod -Force -Scope CurrentUser
+              }
+          }
+
+      - name: Run lint
+        shell: pwsh
+        run: Invoke-Build Lint
+
+  test:
+    name: Pester Tests
+    needs: changes
+    if: github.actor != 'claude[bot]' && needs.changes.outputs.powershell == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      checks: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Get cache week
+        id: week
+        run: echo "week=$(date +%Y-W%V)" >> $GITHUB_OUTPUT
+
+      - name: Cache PowerShell modules
+        uses: actions/cache@v5
+        with:
+          path: ~/.local/share/powershell/Modules
+          key: ps-test-${{ steps.week.outputs.week }}-${{ hashFiles('.github/workflows/ci.yml') }}
+          restore-keys: |
+            ps-test-
+
+      - name: Install build dependencies
+        shell: pwsh
+        run: |
+          foreach ($mod in @(
+              @{ Name = 'InvokeBuild' },
+              @{ Name = 'Pester'; MinimumVersion = '5.0.0' }
+          )) {
+              if (-not (Get-Module -ListAvailable -Name $mod.Name)) {
+                  $installParams = @{
+                      Name  = $mod.Name
+                      Force = $true
+                      Scope = 'CurrentUser'
+                  }
+                  if ($mod.MinimumVersion) { $installParams.MinimumVersion = $mod.MinimumVersion }
+                  Install-Module @installParams
+              }
+          }
+
+          # Install stub modules for Graph/Az mocking
+          foreach ($mod in @(
+              'Microsoft.Graph.Authentication',
+              'Az.Accounts',
+              'Az.Resources',
+              'Az.OperationalInsights'
+          )) {
+              if (-not (Get-Module -ListAvailable -Name $mod)) {
+                  Install-Module -Name $mod -Force -Scope CurrentUser
+              }
+          }
+
+      - name: Run tests
+        shell: pwsh
+        run: Invoke-Build Test -Configuration Release
+
+      - name: Publish test results
+        if: always()
+        uses: dorny/test-reporter@v3
+        with:
+          name: Pester Tests
+          path: TestResults.xml
+          reporter: java-junit
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-results
+          path: TestResults.xml
+
+      - name: Upload coverage results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-results
+          path: CoverageResults.xml
+
+  docs-check:
+    name: Docs Verification
+    needs: changes
+    if: github.actor != 'claude[bot]' && needs.changes.outputs.powershell == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Get cache week
+        id: week
+        run: echo "week=$(date +%Y-W%V)" >> $GITHUB_OUTPUT
+
+      - name: Cache PowerShell modules
+        uses: actions/cache@v5
+        with:
+          path: ~/.local/share/powershell/Modules
+          key: ps-docs-${{ steps.week.outputs.week }}-${{ hashFiles('.github/workflows/ci.yml') }}
+          restore-keys: |
+            ps-docs-
+
+      - name: Install build dependencies
+        shell: pwsh
+        run: |
+          foreach ($mod in @('InvokeBuild')) {
+              if (-not (Get-Module -ListAvailable -Name $mod)) {
+                  Install-Module -Name $mod -Force -Scope CurrentUser
+              }
+          }
+          if (-not (Get-Module -ListAvailable -Name Microsoft.PowerShell.PlatyPS)) {
+              Install-PSResource -Name Microsoft.PowerShell.PlatyPS -Scope CurrentUser -TrustRepository
+          }
+
+          # Install module dependencies for Import-Module during doc generation
+          foreach ($mod in @(
+              'Microsoft.Graph.Authentication',
+              'Az.Accounts',
+              'Az.Resources',
+              'Az.OperationalInsights'
+          )) {
+              if (-not (Get-Module -ListAvailable -Name $mod)) {
+                  Install-Module -Name $mod -Force -Scope CurrentUser
+              }
+          }
+
+      - name: Assert docs are current
+        shell: pwsh
+        run: Invoke-Build AssertDocsClean
+
+  secret-scan:
+    name: Secret Scan
+    if: github.actor != 'claude[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: TruffleHog scan
+        uses: trufflesecurity/trufflehog@main
+        with:
+          extra_args: --only-verified
+
+  ci-gate:
+    name: CI Gate
+    if: always() && github.actor != 'claude[bot]'
+    needs: [lint, test, docs-check, secret-scan]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check job results
+        run: |
+          if [[ "${{ needs.lint.result }}" == "failure" || \
+                "${{ needs.test.result }}" == "failure" || \
+                "${{ needs.docs-check.result }}" == "failure" || \
+                "${{ needs.secret-scan.result }}" == "failure" ]]; then
+            echo "One or more CI jobs failed"
+            exit 1
+          fi
+          echo "All CI jobs passed or were skipped"

@@ -1,0 +1,16 @@
+# Pre-commit hooks — catches secrets before they enter git history.
+# Install: pip install pre-commit && pre-commit install
+# Manual run: pre-commit run --all-files
+#
+# This is the first line of defense. The CI TruffleHog scan is the backstop
+# for cases where hooks were bypassed or not installed.
+
+repos:
+  - repo: https://github.com/trufflesecurity/trufflehog
+    rev: v3.88.26
+    hooks:
+      - id: trufflehog
+        name: TruffleHog Secret Scan
+        entry: trufflehog git file://. --since-commit HEAD --fail --no-update
+        language: system
+        stages: [pre-commit]

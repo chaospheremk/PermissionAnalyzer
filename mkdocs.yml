@@ -1,0 +1,33 @@
+# Standard docs site config — Zensical reads this file natively.
+# The palette block below is REQUIRED for dark mode. Do not remove.
+site_name: PermissionAnalyzer Documentation
+docs_dir: docs
+
+theme:
+  name: material
+  palette:
+    scheme: slate
+    primary: indigo
+    accent: teal
+  font:
+    text: Roboto
+    code: Roboto Mono
+  features:
+    - navigation.sections
+    - navigation.top
+    - navigation.indexes
+    - content.code.copy
+    - search.highlight
+
+plugins:
+  - search
+
+markdown_extensions:
+  - meta
+  - admonition
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - tables
+  - toc:
+      permalink: true

@@ -1,0 +1,68 @@
+{
+  "_meta": {
+    "description": "Maps Entra AuditLogs OperationName values to allowedResourceActions namespace prefixes. Used by Find-PALeastPrivilegeGap for Tier 3 analysis of Entra directory roles. Start with namespace inference (Option B); add explicit mappings here as gaps are found.",
+    "version": "0.1.0",
+    "lastUpdated": "2026-04-01"
+  },
+  "categoryToNamespace": {
+    "UserManagement": "microsoft.directory/users",
+    "GroupManagement": "microsoft.directory/groups",
+    "RoleManagement": "microsoft.directory/roleAssignments",
+    "ApplicationManagement": "microsoft.directory/applications",
+    "DeviceManagement": "microsoft.directory/devices",
+    "Policy": "microsoft.directory/policies",
+    "DirectoryManagement": "microsoft.directory",
+    "ResourceProviderService": "microsoft.directory/servicePrincipals",
+    "Authentication": "microsoft.directory/users/authentication",
+    "Authorization": "microsoft.directory/roleAssignments",
+    "ConditionalAccess": "microsoft.directory/conditionalAccessPolicies",
+    "IdentityProtection": "microsoft.directory/identityProtection",
+    "PrivilegedIdentityManagement": "microsoft.directory/privilegedIdentityManagement",
+    "SelfServiceGroupManagement": "microsoft.directory/groups",
+    "SelfServicePasswordManagement": "microsoft.directory/users/password",
+    "EntitlementManagement": "microsoft.directory/entitlementManagement",
+    "TermsOfUse": "microsoft.directory/agreements",
+    "AccessReviews": "microsoft.directory/accessReviews"
+  },
+  "explicitMappings": {
+    "Add user": "microsoft.directory/users/create",
+    "Delete user": "microsoft.directory/users/delete",
+    "Update user": "microsoft.directory/users/basic/update",
+    "Reset user password": "microsoft.directory/users/password/update",
+    "Set force change user password": "microsoft.directory/users/password/update",
+    "Disable account": "microsoft.directory/users/basic/update",
+    "Enable account": "microsoft.directory/users/basic/update",
+    "Revoke sign in sessions": "microsoft.directory/users/invalidateAllRefreshTokens",
+
+    "Add group": "microsoft.directory/groups/create",
+    "Delete group": "microsoft.directory/groups/delete",
+    "Update group": "microsoft.directory/groups/basic/update",
+    "Add member to group": "microsoft.directory/groups/members/update",
+    "Remove member from group": "microsoft.directory/groups/members/update",
+    "Add owner to group": "microsoft.directory/groups/owners/update",
+    "Remove owner from group": "microsoft.directory/groups/owners/update",
+
+    "Add member to role": "microsoft.directory/roleAssignments/allProperties/allTasks",
+    "Remove member from role": "microsoft.directory/roleAssignments/allProperties/allTasks",
+
+    "Add app role assignment grant to user": "microsoft.directory/servicePrincipals/appRoleAssignedTo/update",
+    "Add delegated permission grant": "microsoft.directory/oAuth2PermissionGrants/allProperties/allTasks",
+    "Add application": "microsoft.directory/applications/create",
+    "Delete application": "microsoft.directory/applications/delete",
+    "Update application": "microsoft.directory/applications/basic/update",
+    "Add service principal": "microsoft.directory/servicePrincipals/create",
+    "Update service principal": "microsoft.directory/servicePrincipals/basic/update",
+    "Add app role assignment to service principal": "microsoft.directory/servicePrincipals/appRoleAssignedTo/update",
+    "Remove app role assignment from service principal": "microsoft.directory/servicePrincipals/appRoleAssignedTo/update",
+
+    "Add conditional access policy": "microsoft.directory/conditionalAccessPolicies/create",
+    "Delete conditional access policy": "microsoft.directory/conditionalAccessPolicies/delete",
+    "Update conditional access policy": "microsoft.directory/conditionalAccessPolicies/basic/update",
+
+    "Add device": "microsoft.directory/devices/create",
+    "Delete device": "microsoft.directory/devices/delete",
+    "Update device": "microsoft.directory/devices/basic/update",
+    "Disable device": "microsoft.directory/devices/disable",
+    "Enable device": "microsoft.directory/devices/enable"
+  }
+}
