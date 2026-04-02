@@ -106,6 +106,21 @@ Describe 'Invoke-PAGraphRequest' {
         }
     }
 
+    Context '$expand injection' {
+
+        It 'Adds $expand query parameter to URI' {
+            Mock Invoke-MgGraphRequest {
+                [PSCustomObject]@{ value = @(); '@odata.nextLink' = $null }
+            }
+
+            Invoke-PAGraphRequest -Uri '/test' -Expand 'principal($select=id,displayName)'
+
+            Should -Invoke Invoke-MgGraphRequest -ParameterFilter {
+                $Uri -like '*`$expand=principal*'
+            }
+        }
+    }
+
     Context 'ConsistencyLevel header' {
 
         It 'Passes ConsistencyLevel header and adds $count=true' {
