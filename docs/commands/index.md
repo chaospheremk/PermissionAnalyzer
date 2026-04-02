@@ -12,6 +12,7 @@
 | [Get-PAAzureRbacAssignment](Get-PAAzureRbacAssignment.md) | Collects Azure RBAC role assignments across in-scope subscriptions |
 | [Get-PAEntraRoleAssignment](Get-PAEntraRoleAssignment.md) | Collects Entra ID directory role assignments from a tenant |
 | [Get-PAPimEligibility](Get-PAPimEligibility.md) | Collects PIM eligible assignments from Entra ID and Azure RBAC |
+| [Invoke-PAPermissionAudit](Invoke-PAPermissionAudit.md) | Runs a complete permission audit pipeline |
 | [New-PARemediationScript](New-PARemediationScript.md) | Generates runnable remediation scripts from analysis findings |
 | [Test-PAFindingAccuracy](Test-PAFindingAccuracy.md) | Re-validates findings against current tenant state |
 
