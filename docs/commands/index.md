@@ -3,6 +3,9 @@
 | Command | Description |
 |---------|-------------|
 | [Connect-PASession](Connect-PASession.md) | Establishes Graph and Azure connections and returns a PA.Session object |
+| [Find-PAGroupConsolidation](Find-PAGroupConsolidation.md) | Identifies opportunities to consolidate individual role assignments into groups |
+| [Find-PALeastPrivilegeGap](Find-PALeastPrivilegeGap.md) | Identifies over-privileged access by comparing granted vs used permissions |
+| [Find-PAUnusedAssignment](Find-PAUnusedAssignment.md) | Identifies unused role assignments based on activity analysis |
 | [Get-PAActivitySignal](Get-PAActivitySignal.md) | Collects activity signals per principal from Log Analytics or Graph API |
 | [Get-PAAppPermission](Get-PAAppPermission.md) | Collects application permissions and delegated permission grants from a tenant |
 | [Get-PAAzureRbacAssignment](Get-PAAzureRbacAssignment.md) | Collects Azure RBAC role assignments across in-scope subscriptions |
