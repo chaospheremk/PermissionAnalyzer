@@ -18,6 +18,8 @@ function Invoke-PAGraphRequest {
         Fields to include as the $select query parameter.
     .PARAMETER Filter
         OData $filter expression.
+    .PARAMETER Expand
+        OData $expand expression (e.g. 'principal($select=id,displayName)').
     .PARAMETER ApiVersion
         Graph API version to use.
     .PARAMETER MaxPages
@@ -59,6 +61,9 @@ function Invoke-PAGraphRequest {
         [string]$Filter = '',
 
         [Parameter()]
+        [string]$Expand = '',
+
+        [Parameter()]
         [ValidateSet('v1.0', 'beta')]
         [string]$ApiVersion = 'v1.0',
 
@@ -87,6 +92,9 @@ function Invoke-PAGraphRequest {
     }
     if ($Filter -ne '') {
         $queryParts.Add("`$filter=$Filter")
+    }
+    if ($Expand -ne '') {
+        $queryParts.Add("`$expand=$Expand")
     }
     if ($ConsistencyLevel -ne '') {
         $queryParts.Add('$count=true')
