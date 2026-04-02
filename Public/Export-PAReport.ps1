@@ -154,80 +154,146 @@ function Export-PAReport {
                     'HTML' {
                         $htmlPath = Join-Path $resolvedDir "PA-Report-$RunId.html"
 
+                        # Human-friendly label mappings
+                        $categoryLabels = @{
+                            UnusedAssignment   = 'Unused Assignment'
+                            OverPrivileged     = 'Over-Privileged'
+                            GroupConsolidation = 'Group Consolidation'
+                        }
+                        $remediationLabels = @{
+                            Remove             = 'Remove'
+                            Downgrade          = 'Downgrade Role'
+                            ConsolidateToGroup = 'Consolidate to Group'
+                            ReviewEligible     = 'Review Eligible'
+                            ReduceScope        = 'Reduce Scope'
+                        }
+
+                        # Sort findings by severity (Critical first)
+                        $severityOrder = @{ Critical = 0; High = 1; Medium = 2; Low = 3; Info = 4 }
+                        $sortedFindings = @($Findings | Sort-Object { $severityOrder[$_.Severity] })
+
                         $sb = [System.Text.StringBuilder]::new()
                         [void]$sb.AppendLine('<!DOCTYPE html>')
                         [void]$sb.AppendLine('<html lang="en">')
                         [void]$sb.AppendLine('<head>')
                         [void]$sb.AppendLine('    <meta charset="utf-8" />')
-                        [void]$sb.AppendLine("    <title>PermissionAnalyzer Report - $RunId</title>")
+                        [void]$sb.AppendLine('    <meta name="viewport" content="width=device-width, initial-scale=1" />')
+                        [void]$sb.AppendLine("    <title>PermissionAnalyzer Report &mdash; $RunId</title>")
                         [void]$sb.AppendLine('    <style>')
-                        [void]$sb.AppendLine('        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 2em; color: #333; }')
-                        [void]$sb.AppendLine('        h1 { color: #1a1a2e; }')
-                        [void]$sb.AppendLine('        h2 { color: #16213e; border-bottom: 2px solid #e2e8f0; padding-bottom: 0.3em; }')
-                        [void]$sb.AppendLine('        table { border-collapse: collapse; width: 100%; margin-bottom: 2em; }')
-                        [void]$sb.AppendLine('        th, td { border: 1px solid #e2e8f0; padding: 8px 12px; text-align: left; }')
-                        [void]$sb.AppendLine('        th { background-color: #f7fafc; font-weight: 600; }')
-                        [void]$sb.AppendLine('        tr:nth-child(even) { background-color: #f7fafc; }')
-                        [void]$sb.AppendLine('        .severity-Critical { background-color: #fed7d7; color: #9b2c2c; font-weight: 600; }')
-                        [void]$sb.AppendLine('        .severity-High { background-color: #feebc8; color: #c05621; font-weight: 600; }')
+                        # CSS custom properties for light/dark themes
+                        [void]$sb.AppendLine('        :root { --bg: #f7fafc; --bg-surface: #fff; --bg-header: #edf2f7; --text: #1a202c; --text-secondary: #4a5568; --text-muted: #718096; --text-faint: #a0aec0; --border: #e2e8f0; --shadow: rgba(0,0,0,0.08); --hover: #edf2f7; --heading: #1a1a2e; --heading2: #2d3748; }')
+                        [void]$sb.AppendLine('        [data-theme="dark"] { --bg: #1a202c; --bg-surface: #2d3748; --bg-header: #2d3748; --text: #e2e8f0; --text-secondary: #cbd5e0; --text-muted: #a0aec0; --text-faint: #718096; --border: #4a5568; --shadow: rgba(0,0,0,0.3); --hover: #4a5568; --heading: #e2e8f0; --heading2: #cbd5e0; }')
+                        [void]$sb.AppendLine('        *, *::before, *::after { box-sizing: border-box; }')
+                        [void]$sb.AppendLine('        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 2em; color: var(--text); background: var(--bg); max-width: 1400px; margin: 0 auto; transition: background 0.2s, color 0.2s; }')
+                        [void]$sb.AppendLine('        h1 { color: var(--heading); margin-bottom: 0.25em; }')
+                        [void]$sb.AppendLine('        h2 { color: var(--heading2); border-bottom: 2px solid var(--border); padding-bottom: 0.4em; margin-top: 2em; }')
+                        [void]$sb.AppendLine('        .header-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }')
+                        [void]$sb.AppendLine('        .theme-toggle { background: var(--bg-surface); border: 1px solid var(--border); border-radius: 6px; padding: 6px 14px; cursor: pointer; font-size: 0.85em; color: var(--text-muted); transition: background 0.2s, border-color 0.2s; }')
+                        [void]$sb.AppendLine('        .theme-toggle:hover { border-color: var(--text-secondary); }')
+                        [void]$sb.AppendLine('        .subtitle { color: var(--text-muted); margin-top: 0; margin-bottom: 2em; font-size: 0.95em; }')
+                        [void]$sb.AppendLine('        table { border-collapse: collapse; margin-bottom: 2em; background: var(--bg-surface); border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px var(--shadow); }')
+                        [void]$sb.AppendLine('        th, td { border: 1px solid var(--border); padding: 10px 14px; text-align: left; font-size: 0.9em; }')
+                        [void]$sb.AppendLine('        th { background-color: var(--bg-header); font-weight: 600; color: var(--heading2); white-space: nowrap; }')
+                        [void]$sb.AppendLine('        tbody tr:hover { background-color: var(--hover); }')
+                        [void]$sb.AppendLine('        .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 0.8em; font-weight: 600; white-space: nowrap; }')
+                        [void]$sb.AppendLine('        .severity-Critical { background-color: #fed7d7; color: #9b2c2c; }')
+                        [void]$sb.AppendLine('        .severity-High { background-color: #feebc8; color: #c05621; }')
                         [void]$sb.AppendLine('        .severity-Medium { background-color: #fefcbf; color: #975a16; }')
                         [void]$sb.AppendLine('        .severity-Low { background-color: #bee3f8; color: #2a69ac; }')
                         [void]$sb.AppendLine('        .severity-Info { background-color: #e2e8f0; color: #4a5568; }')
-                        [void]$sb.AppendLine('        .summary-grid { display: flex; gap: 2em; margin-bottom: 2em; }')
-                        [void]$sb.AppendLine('        .summary-grid table { width: auto; }')
-                        [void]$sb.AppendLine('        footer { margin-top: 2em; color: #a0aec0; font-size: 0.85em; }')
+                        # Dark theme severity badge adjustments
+                        [void]$sb.AppendLine('        [data-theme="dark"] .severity-Critical { background-color: #742a2a; color: #feb2b2; }')
+                        [void]$sb.AppendLine('        [data-theme="dark"] .severity-High { background-color: #7b341e; color: #fbd38d; }')
+                        [void]$sb.AppendLine('        [data-theme="dark"] .severity-Medium { background-color: #744210; color: #fefcbf; }')
+                        [void]$sb.AppendLine('        [data-theme="dark"] .severity-Low { background-color: #2a4365; color: #bee3f8; }')
+                        [void]$sb.AppendLine('        [data-theme="dark"] .severity-Info { background-color: #4a5568; color: #e2e8f0; }')
+                        [void]$sb.AppendLine('        .summary-grid { display: flex; gap: 2em; flex-wrap: wrap; margin-bottom: 1em; }')
+                        [void]$sb.AppendLine('        .summary-grid table { width: auto; min-width: 220px; }')
+                        [void]$sb.AppendLine('        .summary-grid td.count { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }')
+                        [void]$sb.AppendLine('        .findings-table { width: 100%; }')
+                        [void]$sb.AppendLine('        .findings-table td.col-title { max-width: 320px; }')
+                        [void]$sb.AppendLine('        .findings-table td.col-scope { max-width: 260px; word-break: break-all; font-family: "Cascadia Code", "Fira Code", "Consolas", monospace; font-size: 0.82em; color: var(--text-secondary); }')
+                        [void]$sb.AppendLine('        .findings-table td.col-rec { max-width: 300px; font-size: 0.88em; color: var(--text-secondary); }')
+                        [void]$sb.AppendLine('        footer { margin-top: 3em; padding-top: 1.5em; border-top: 1px solid var(--border); color: var(--text-faint); font-size: 0.85em; }')
                         [void]$sb.AppendLine('    </style>')
                         [void]$sb.AppendLine('</head>')
                         [void]$sb.AppendLine('<body>')
-                        [void]$sb.AppendLine('    <h1>PermissionAnalyzer Report</h1>')
+                        [void]$sb.AppendLine('    <div class="header-row">')
+                        [void]$sb.AppendLine('        <h1>PermissionAnalyzer Report</h1>')
+                        [void]$sb.AppendLine('        <button class="theme-toggle" onclick="toggleTheme()" title="Toggle dark mode">Light / Dark</button>')
+                        [void]$sb.AppendLine('    </div>')
 
                         $generatedAt = [datetime]::UtcNow.ToString('yyyy-MM-dd HH:mm:ss UTC')
-                        [void]$sb.AppendLine("    <p>Run ID: $RunId | Generated: $generatedAt | Total findings: $($Findings.Count)</p>")
+                        [void]$sb.AppendLine("    <p class=`"subtitle`">Run ID: <strong>$RunId</strong> &middot; Generated: $generatedAt &middot; Total findings: <strong>$($Findings.Count)</strong></p>")
 
                         # Summary tables
                         [void]$sb.AppendLine('    <h2>Summary</h2>')
                         [void]$sb.AppendLine('    <div class="summary-grid">')
 
-                        # Severity table
+                        # Severity table with badges
                         [void]$sb.AppendLine('        <table>')
-                        [void]$sb.AppendLine('            <tr><th>Severity</th><th>Count</th></tr>')
+                        [void]$sb.AppendLine('            <thead><tr><th>Severity</th><th>Count</th></tr></thead>')
+                        [void]$sb.AppendLine('            <tbody>')
                         foreach ($sev in $severityCounts.GetEnumerator()) {
-                            [void]$sb.AppendLine("            <tr><td class=`"severity-$($sev.Key)`">$($sev.Key)</td><td>$($sev.Value)</td></tr>")
+                            [void]$sb.AppendLine("            <tr><td><span class=`"badge severity-$($sev.Key)`">$($sev.Key)</span></td><td class=`"count`">$($sev.Value)</td></tr>")
                         }
+                        [void]$sb.AppendLine('            </tbody>')
                         [void]$sb.AppendLine('        </table>')
 
-                        # Category table
+                        # Category table with human-friendly labels
                         [void]$sb.AppendLine('        <table>')
-                        [void]$sb.AppendLine('            <tr><th>Category</th><th>Count</th></tr>')
+                        [void]$sb.AppendLine('            <thead><tr><th>Category</th><th>Count</th></tr></thead>')
+                        [void]$sb.AppendLine('            <tbody>')
                         foreach ($cat in $categoryCounts.GetEnumerator()) {
-                            [void]$sb.AppendLine("            <tr><td>$($cat.Key)</td><td>$($cat.Value)</td></tr>")
+                            $catLabel = if ($categoryLabels.ContainsKey($cat.Key)) { $categoryLabels[$cat.Key] } else { $cat.Key }
+                            [void]$sb.AppendLine("            <tr><td>$catLabel</td><td class=`"count`">$($cat.Value)</td></tr>")
                         }
+                        [void]$sb.AppendLine('            </tbody>')
                         [void]$sb.AppendLine('        </table>')
 
                         [void]$sb.AppendLine('    </div>')
 
-                        # Findings table
+                        # Findings table — sorted by severity, human-friendly labels
                         [void]$sb.AppendLine('    <h2>Findings</h2>')
-                        [void]$sb.AppendLine('    <table>')
-                        [void]$sb.AppendLine('        <tr><th>Severity</th><th>Category</th><th>Title</th><th>Principal</th><th>Role</th><th>Scope</th><th>Recommendation</th><th>Remediation</th></tr>')
+                        [void]$sb.AppendLine('    <table class="findings-table">')
+                        [void]$sb.AppendLine('        <thead><tr><th>Severity</th><th>Category</th><th>Title</th><th>Principal</th><th>Role</th><th>Scope</th><th>Recommendation</th><th>Remediation</th></tr></thead>')
+                        [void]$sb.AppendLine('        <tbody>')
 
                         if ($Findings.Count -eq 0) {
-                            [void]$sb.AppendLine('        <tr><td colspan="8" style="text-align:center;color:#a0aec0;">No findings</td></tr>')
+                            [void]$sb.AppendLine('        <tr><td colspan="8" style="text-align:center;color:#a0aec0;padding:2em;">No findings</td></tr>')
                         }
                         else {
-                            foreach ($f in $Findings) {
-                                $sevClass = "severity-$($f.Severity)"
+                            foreach ($f in $sortedFindings) {
                                 $title = [System.Net.WebUtility]::HtmlEncode($f.Title)
                                 $principal = [System.Net.WebUtility]::HtmlEncode($f.PrincipalDisplayName)
                                 $role = [System.Net.WebUtility]::HtmlEncode($f.RoleName)
                                 $scope = [System.Net.WebUtility]::HtmlEncode($f.Scope)
                                 $rec = [System.Net.WebUtility]::HtmlEncode($f.Recommendation)
-                                [void]$sb.AppendLine("        <tr><td class=`"$sevClass`">$($f.Severity)</td><td>$($f.Category)</td><td>$title</td><td>$principal</td><td>$role</td><td>$scope</td><td>$rec</td><td>$($f.RemediationAction)</td></tr>")
+                                $catLabel = if ($categoryLabels.ContainsKey($f.Category)) { $categoryLabels[$f.Category] } else { $f.Category }
+                                $remLabel = if ($remediationLabels.ContainsKey($f.RemediationAction)) { $remediationLabels[$f.RemediationAction] } else { $f.RemediationAction }
+                                [void]$sb.AppendLine("        <tr><td><span class=`"badge severity-$($f.Severity)`">$($f.Severity)</span></td><td>$catLabel</td><td class=`"col-title`">$title</td><td>$principal</td><td>$role</td><td class=`"col-scope`">$scope</td><td class=`"col-rec`">$rec</td><td>$remLabel</td></tr>")
                             }
                         }
 
+                        [void]$sb.AppendLine('        </tbody>')
                         [void]$sb.AppendLine('    </table>')
-                        [void]$sb.AppendLine('    <footer>Generated by PermissionAnalyzer v0.1.0</footer>')
+
+                        # Footer with summary
+                        $critCount = $severityCounts['Critical']
+                        $highCount = $severityCounts['High']
+                        [void]$sb.AppendLine("    <footer>Generated by PermissionAnalyzer v0.1.0 &middot; $($Findings.Count) findings ($critCount critical, $highCount high) &middot; $generatedAt</footer>")
+                        [void]$sb.AppendLine('    <script>')
+                        [void]$sb.AppendLine('        function toggleTheme() {')
+                        [void]$sb.AppendLine('            var html = document.documentElement;')
+                        [void]$sb.AppendLine('            var current = html.getAttribute("data-theme");')
+                        [void]$sb.AppendLine('            var next = current === "dark" ? "light" : "dark";')
+                        [void]$sb.AppendLine('            html.setAttribute("data-theme", next);')
+                        [void]$sb.AppendLine('            try { localStorage.setItem("pa-theme", next); } catch(e) {}')
+                        [void]$sb.AppendLine('        }')
+                        [void]$sb.AppendLine('        (function() {')
+                        [void]$sb.AppendLine('            try { var t = localStorage.getItem("pa-theme"); if (t) document.documentElement.setAttribute("data-theme", t); } catch(e) {}')
+                        [void]$sb.AppendLine('        })();')
+                        [void]$sb.AppendLine('    </script>')
                         [void]$sb.AppendLine('</body>')
                         [void]$sb.AppendLine('</html>')
 
