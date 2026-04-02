@@ -18,9 +18,9 @@ function Find-PAUnusedAssignment {
         Number of days without role activity before a Tier 0 principal triggers a
         finding. Defaults to 90.
     .EXAMPLE
-        $findings = Find-PAUnusedAssignment -Assignments $assignments -ActivityProfiles $profiles
+        $findings = Find-PAUnusedAssignment -Assignments $assignments -ActivityProfiles $actProfiles
     .EXAMPLE
-        $findings = Find-PAUnusedAssignment -Assignments $assignments -ActivityProfiles $profiles -InactivityThresholdDays 30
+        $findings = Find-PAUnusedAssignment -Assignments $assignments -ActivityProfiles $actProfiles -InactivityThresholdDays 30
     .OUTPUTS
         PSCustomObject (PA.CollectorResult) wrapping PA.Finding items.
     #>
@@ -77,25 +77,25 @@ function Find-PAUnusedAssignment {
         $findings = [System.Collections.Generic.List[object]]::new()
 
         # Build profile lookup by PrincipalId
-        $profileMap = @{}
-        foreach ($profile in $ActivityProfiles) {
-            $profileMap[$profile.PrincipalId] = $profile
+        $actProfileMap = @{}
+        foreach ($actProfile in $ActivityProfiles) {
+            $actProfileMap[$actProfile.PrincipalId] = $actProfile
         }
 
         foreach ($assignment in $Assignments) {
             try {
                 $principalId = $assignment.PrincipalId
-                $profile = $profileMap[$principalId]
+                $actProfile = $actProfileMap[$principalId]
 
                 # Skip assignments with no activity profile
-                if ($null -eq $profile) {
+                if ($null -eq $actProfile) {
                     $msg = "No activity profile for principal '$principalId' — skipping"
                     $warnings.Add($msg)
                     Write-Warning "Find-PAUnusedAssignment: $msg"
                     continue
                 }
 
-                $tier = $profile.ActivityTier
+                $tier = $actProfile.ActivityTier
                 $isCritical = $criticalRoles.Contains($assignment.RoleName)
 
                 # Determine if this assignment qualifies as unused
@@ -104,28 +104,28 @@ function Find-PAUnusedAssignment {
 
                 if ($tier -eq 1) {
                     # Tier 1: No sign-in
-                    $daysSinceActive = if ($null -ne $profile.DaysSinceLastSignIn) {
-                        $profile.DaysSinceLastSignIn
+                    $daysSinceActive = if ($null -ne $actProfile.DaysSinceLastSignIn) {
+                        $actProfile.DaysSinceLastSignIn
                     } else {
-                        $profile.LookbackDays
+                        $actProfile.LookbackDays
                     }
                     $severity = if ($isCritical) { 'Critical' } else { 'High' }
                 }
                 elseif ($tier -eq 2) {
                     # Tier 2: Signs in but no role-related activity
-                    $daysSinceActive = if ($null -ne $profile.DaysSinceLastRoleActivity) {
-                        $profile.DaysSinceLastRoleActivity
+                    $daysSinceActive = if ($null -ne $actProfile.DaysSinceLastRoleActivity) {
+                        $actProfile.DaysSinceLastRoleActivity
                     } else {
-                        $profile.LookbackDays
+                        $actProfile.LookbackDays
                     }
                     $severity = if ($isCritical) { 'High' } else { 'Medium' }
                 }
                 elseif ($tier -eq 0) {
                     # Tier 0: Active principal — check for stale role usage
-                    $effectiveDays = if ($null -ne $profile.DaysSinceLastRoleActivity) {
-                        $profile.DaysSinceLastRoleActivity
+                    $effectiveDays = if ($null -ne $actProfile.DaysSinceLastRoleActivity) {
+                        $actProfile.DaysSinceLastRoleActivity
                     } else {
-                        $profile.LookbackDays
+                        $actProfile.LookbackDays
                     }
 
                     if ($effectiveDays -gt $InactivityThresholdDays) {
@@ -183,8 +183,8 @@ function Find-PAUnusedAssignment {
                         AssignmentType = $assignment.AssignmentType
                         ScopeType      = $assignment.ScopeType
                         RoleType       = $assignment.RoleType
-                        LookbackDays   = $profile.LookbackDays
-                        DataSource     = $profile.DataSource
+                        LookbackDays   = $actProfile.LookbackDays
+                        DataSource     = $actProfile.DataSource
                     }
                 }
 

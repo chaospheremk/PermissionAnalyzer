@@ -22,9 +22,9 @@ function Find-PALeastPrivilegeGap {
         the principal must be using less than 50% of their granted namespaces.
         Defaults to 0.5.
     .EXAMPLE
-        $findings = Find-PALeastPrivilegeGap -Assignments $assignments -ActivityProfiles $profiles
+        $findings = Find-PALeastPrivilegeGap -Assignments $assignments -ActivityProfiles $actProfiles
     .EXAMPLE
-        $findings = Find-PALeastPrivilegeGap -Assignments $assignments -ActivityProfiles $profiles -GapThreshold 0.3
+        $findings = Find-PALeastPrivilegeGap -Assignments $assignments -ActivityProfiles $actProfiles -GapThreshold 0.3
     .OUTPUTS
         PSCustomObject (PA.CollectorResult) wrapping PA.Finding items.
     #>
@@ -81,9 +81,9 @@ function Find-PALeastPrivilegeGap {
         $findings = [System.Collections.Generic.List[object]]::new()
 
         # Build profile lookup by PrincipalId
-        $profileMap = @{}
-        foreach ($profile in $ActivityProfiles) {
-            $profileMap[$profile.PrincipalId] = $profile
+        $actProfileMap = @{}
+        foreach ($actProfile in $ActivityProfiles) {
+            $actProfileMap[$actProfile.PrincipalId] = $actProfile
         }
 
         foreach ($assignment in $Assignments) {
@@ -96,10 +96,10 @@ function Find-PALeastPrivilegeGap {
                     continue
                 }
 
-                $profile = $profileMap[$principalId]
+                $actProfile = $actProfileMap[$principalId]
 
                 # Skip assignments with no activity profile
-                if ($null -eq $profile) {
+                if ($null -eq $actProfile) {
                     $msg = "No activity profile for principal '$principalId' — skipping"
                     $warnings.Add($msg)
                     Write-Warning "Find-PALeastPrivilegeGap: $msg"
@@ -107,12 +107,12 @@ function Find-PALeastPrivilegeGap {
                 }
 
                 # Skip Tier 1 profiles (no sign-in — covered by Find-PAUnusedAssignment)
-                if ($profile.ActivityTier -eq 1) {
+                if ($actProfile.ActivityTier -eq 1) {
                     continue
                 }
 
                 # Skip profiles with no action data
-                if ($profile.GrantedActions.Count -eq 0 -and $profile.UsedActions.Count -eq 0) {
+                if ($actProfile.GrantedActions.Count -eq 0 -and $actProfile.UsedActions.Count -eq 0) {
                     $msg = "No action data for principal '$principalId' — GrantedActions and UsedActions are empty"
                     $warnings.Add($msg)
                     Write-Warning "Find-PALeastPrivilegeGap: $msg"
@@ -120,12 +120,12 @@ function Find-PALeastPrivilegeGap {
                 }
 
                 # Skip profiles where UsedActions is empty (no activity = covered by UnusedAssignment Tier 2)
-                if ($profile.UsedActions.Count -eq 0) {
+                if ($actProfile.UsedActions.Count -eq 0) {
                     continue
                 }
 
                 # Skip if no granted actions to compare against
-                if ($profile.GrantedActions.Count -eq 0) {
+                if ($actProfile.GrantedActions.Count -eq 0) {
                     continue
                 }
 
@@ -133,7 +133,7 @@ function Find-PALeastPrivilegeGap {
                 $grantedNamespaces = [System.Collections.Generic.HashSet[string]]::new(
                     [System.StringComparer]::OrdinalIgnoreCase
                 )
-                foreach ($action in $profile.GrantedActions) {
+                foreach ($action in $actProfile.GrantedActions) {
                     $segments = $action -split '/'
                     if ($segments.Count -ge 2) {
                         [void]$grantedNamespaces.Add("$($segments[0])/$($segments[1])")
@@ -143,7 +143,7 @@ function Find-PALeastPrivilegeGap {
                 $usedNamespaces = [System.Collections.Generic.HashSet[string]]::new(
                     [System.StringComparer]::OrdinalIgnoreCase
                 )
-                foreach ($action in $profile.UsedActions) {
+                foreach ($action in $actProfile.UsedActions) {
                     $segments = $action -split '/'
                     if ($segments.Count -ge 2) {
                         [void]$usedNamespaces.Add("$($segments[0])/$($segments[1])")
@@ -212,7 +212,7 @@ function Find-PALeastPrivilegeGap {
                     Scope                = $assignment.Scope
                     Source               = $assignment.Source
                     ActivityTier         = 3
-                    DaysSinceActive      = $profile.DaysSinceLastRoleActivity
+                    DaysSinceActive      = $actProfile.DaysSinceLastRoleActivity
                     Recommendation       = $recommendation
                     RemediationAction    = 'Downgrade'
                     Details              = @{
@@ -223,8 +223,8 @@ function Find-PALeastPrivilegeGap {
                         GrantedNamespaces = $grantedArr
                         UsedNamespaces    = $usedArr
                         UnusedNamespaces  = $unusedArr
-                        LookbackDays      = $profile.LookbackDays
-                        DataSource        = $profile.DataSource
+                        LookbackDays      = $actProfile.LookbackDays
+                        DataSource        = $actProfile.DataSource
                     }
                 }
 
