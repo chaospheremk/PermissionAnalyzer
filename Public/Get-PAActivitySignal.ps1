@@ -32,10 +32,14 @@ function Get-PAActivitySignal {
         Number of days for the activity lookback window. Defaults to 90.
         Capped at 30 for Graph API path (directoryAudits limitation).
     .EXAMPLE
-        $session = Connect-PASession -TenantId '<tenant-id>' -WorkspaceId '<workspace-id>'
+        $sessionParams = @{
+            TenantId    = '<tenant-id>'
+            WorkspaceId = '<workspace-id>'
+        }
+        $session = Connect-PASession @sessionParams
         $assignments = ($entraResult.Items + $rbacResult.Items)
         $result = Get-PAActivitySignal -Session $session -Assignments $assignments
-        $result.Items | Where-Object ActivityTier -ge 1
+        $result.Items.Where({ $_.ActivityTier -ge 1 })
 
         Collects activity signals and filters to inactive principals.
     .EXAMPLE
@@ -48,8 +52,14 @@ function Get-PAActivitySignal {
         $result.Items | Group-Object ActivityTier | Select-Object Name, Count
 
         Collects with 180-day lookback and shows tier distribution.
+    .INPUTS
+        None.
     .OUTPUTS
         PSCustomObject (PA.CollectorResult)
+    .NOTES
+        Part of the PermissionAnalyzer module.
+    .LINK
+        https://chaospheremk.github.io/PermissionAnalyzer/commands/Get-PAActivitySignal/
     #>
     [CmdletBinding()]
     param(
@@ -119,7 +129,7 @@ function Get-PAActivitySignal {
             # Log Analytics path
             # =================================================================
 
-            $idListKql = ($principalIds | ForEach-Object { "'$_'" }) -join ','
+            $idListKql = (@(foreach ($id in $principalIds) { "'$id'" }) -join ',')
             $timespan = [timespan]::FromDays($LookbackDays)
 
             # Query A: Sign-in summary
@@ -154,9 +164,10 @@ union SigninLogs, AADNonInteractiveUserSignInLogs
                 Write-Verbose "Get-PAActivitySignal: sign-in data for $($signInMap.Count) principals"
             }
             catch {
+                $ex = $_
                 $signInFailed = $true
-                $warnings.Add("Sign-in query failed: $($_.Exception.Message)")
-                Write-Warning "Get-PAActivitySignal: sign-in query failed — $($_.Exception.Message)"
+                $warnings.Add("Sign-in query failed: $($ex.Exception.Message)")
+                Write-Warning "Get-PAActivitySignal: sign-in query failed — $($ex.Exception.Message)"
             }
 
             # Query B: AuditLogs role activity
@@ -185,9 +196,10 @@ AuditLogs
                 }
             }
             catch {
+                $ex = $_
                 $auditFailed = $true
-                $warnings.Add("AuditLogs query failed: $($_.Exception.Message)")
-                Write-Warning "Get-PAActivitySignal: AuditLogs query failed — $($_.Exception.Message)"
+                $warnings.Add("AuditLogs query failed: $($ex.Exception.Message)")
+                Write-Warning "Get-PAActivitySignal: AuditLogs query failed — $($ex.Exception.Message)"
             }
 
             # Query C: AzureActivity
@@ -228,8 +240,9 @@ AzureActivity
                 Write-Verbose "Get-PAActivitySignal: role activity data for $($roleActivityMap.Count) principals"
             }
             catch {
-                $warnings.Add("AzureActivity query failed: $($_.Exception.Message)")
-                Write-Warning "Get-PAActivitySignal: AzureActivity query failed — $($_.Exception.Message)"
+                $ex = $_
+                $warnings.Add("AzureActivity query failed: $($ex.Exception.Message)")
+                Write-Warning "Get-PAActivitySignal: AzureActivity query failed — $($ex.Exception.Message)"
             }
 
             if ($signInFailed -and $auditFailed) {
@@ -277,14 +290,15 @@ AzureActivity
                 Write-Verbose "Get-PAActivitySignal: sign-in data for $($signInMap.Count) users"
             }
             catch {
-                $warnings.Add("User signInActivity query failed: $($_.Exception.Message)")
-                Write-Warning "Get-PAActivitySignal: user signInActivity query failed — $($_.Exception.Message)"
+                $ex = $_
+                $warnings.Add("User signInActivity query failed: $($ex.Exception.Message)")
+                Write-Warning "Get-PAActivitySignal: user signInActivity query failed — $($ex.Exception.Message)"
             }
 
             # SP sign-in limitation
-            $spPrincipals = $principalIds | Where-Object {
+            $spPrincipals = $principalIds.Where({
                 $principalMap[$_].PrincipalType -eq 'ServicePrincipal'
-            }
+            })
             if ($spPrincipals.Count -gt 0) {
                 $warnings.Add("Graph API path: $($spPrincipals.Count) service principals have no sign-in coverage (no v1.0 endpoint). Use Log Analytics for SP activity.")
                 Write-Warning "Get-PAActivitySignal: $($spPrincipals.Count) SPs have no sign-in data on Graph API path"
@@ -339,8 +353,9 @@ AzureActivity
                 Write-Verbose "Get-PAActivitySignal: role activity data for $($roleActivityMap.Count) principals"
             }
             catch {
-                $warnings.Add("directoryAudits query failed: $($_.Exception.Message)")
-                Write-Warning "Get-PAActivitySignal: directoryAudits query failed — $($_.Exception.Message)"
+                $ex = $_
+                $warnings.Add("directoryAudits query failed: $($ex.Exception.Message)")
+                Write-Warning "Get-PAActivitySignal: directoryAudits query failed — $($ex.Exception.Message)"
             }
         }
 
@@ -415,9 +430,10 @@ AzureActivity
         return New-PACollectorResult @resultParams
     }
     catch {
+        $ex = $_
         $stopwatch.Stop()
-        $errors.Add($_.Exception.Message)
-        Write-Warning "Get-PAActivitySignal: failed — $($_.Exception.Message)"
+        $errors.Add($ex.Exception.Message)
+        Write-Warning "Get-PAActivitySignal: failed — $($ex.Exception.Message)"
 
         $resultParams = @{
             Collector = 'Get-PAActivitySignal'

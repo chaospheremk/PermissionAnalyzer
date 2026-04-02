@@ -20,9 +20,20 @@ function Find-PAUnusedAssignment {
     .EXAMPLE
         $findings = Find-PAUnusedAssignment -Assignments $assignments -ActivityProfiles $actProfiles
     .EXAMPLE
-        $findings = Find-PAUnusedAssignment -Assignments $assignments -ActivityProfiles $actProfiles -InactivityThresholdDays 30
+        $findingParams = @{
+            Assignments            = $assignments
+            ActivityProfiles       = $actProfiles
+            InactivityThresholdDays = 30
+        }
+        $findings = Find-PAUnusedAssignment @findingParams
+    .INPUTS
+        None.
     .OUTPUTS
         PSCustomObject (PA.CollectorResult) wrapping PA.Finding items.
+    .NOTES
+        Part of the PermissionAnalyzer module.
+    .LINK
+        https://chaospheremk.github.io/PermissionAnalyzer/commands/Find-PAUnusedAssignment/
     #>
     [CmdletBinding()]
     param(
@@ -47,7 +58,7 @@ function Find-PAUnusedAssignment {
     $criticalRoles = [System.Collections.Generic.HashSet[string]]::new(
         [System.StringComparer]::OrdinalIgnoreCase
     )
-    @(
+    $roleNames = @(
         'Global Administrator'
         'Privileged Role Administrator'
         'Privileged Authentication Administrator'
@@ -59,7 +70,8 @@ function Find-PAUnusedAssignment {
         'User Access Administrator'
         'Owner'
         'Contributor'
-    ) | ForEach-Object { [void]$criticalRoles.Add($_) }
+    )
+    foreach ($roleName in $roleNames) { [void]$criticalRoles.Add($roleName) }
 
     # Early return for empty assignments
     if ($Assignments.Count -eq 0) {
@@ -191,7 +203,8 @@ function Find-PAUnusedAssignment {
                 $findings.Add((New-PAFinding @findingParams))
             }
             catch {
-                $msg = "Failed to analyze assignment for '$($assignment.PrincipalId)': $($_.Exception.Message)"
+                $ex = $_
+                $msg = "Failed to analyze assignment for '$($assignment.PrincipalId)': $($ex.Exception.Message)"
                 $warnings.Add($msg)
                 Write-Warning "Find-PAUnusedAssignment: $msg"
             }
@@ -210,9 +223,10 @@ function Find-PAUnusedAssignment {
         return New-PACollectorResult @resultParams
     }
     catch {
+        $ex = $_
         $stopwatch.Stop()
-        $errors.Add($_.Exception.Message)
-        Write-Warning "Find-PAUnusedAssignment: failed — $($_.Exception.Message)"
+        $errors.Add($ex.Exception.Message)
+        Write-Warning "Find-PAUnusedAssignment: failed — $($ex.Exception.Message)"
 
         $resultParams = @{
             Collector = 'Find-PAUnusedAssignment'

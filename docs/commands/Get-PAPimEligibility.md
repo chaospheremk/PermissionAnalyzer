@@ -1,7 +1,7 @@
 ---
 document type: cmdlet
 external help file: PermissionAnalyzer-Help.xml
-HelpUri: ''
+HelpUri: https://chaospheremk.github.io/PermissionAnalyzer/commands/Get-PAPimEligibility/
 Locale: en-US
 Module Name: PermissionAnalyzer
 ms.date: 01/01/1970
@@ -54,7 +54,7 @@ Both failing produces a Failed result; one failing produces Partial.
 
 '
 $result = Get-PAPimEligibility -Session $session
-$result.Items | Where-Object Source -eq 'PimEntra'
+$result.Items.Where({ $_.Source -eq 'PimEntra' })
 
 Collects all PIM eligible assignments and filters to Entra PIM.
 
@@ -100,6 +100,10 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ## INPUTS
 
+### None.
+
+
+
 ## OUTPUTS
 
 ### PSCustomObject (PA.CollectorResult)
@@ -108,7 +112,9 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ## NOTES
 
+Part of the PermissionAnalyzer module.
+
+
 ## RELATED LINKS
 
-
-
+- [](https://chaospheremk.github.io/PermissionAnalyzer/commands/Get-PAPimEligibility/)

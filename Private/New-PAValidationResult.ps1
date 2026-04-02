@@ -31,8 +31,14 @@ function New-PAValidationResult {
             CurrentState     = 'Principal still has no sign-in activity'
         }
         $validation = New-PAValidationResult @validationParams
+    .INPUTS
+        None.
     .OUTPUTS
         PSCustomObject (PA.ValidationResult)
+    .NOTES
+        Part of the PermissionAnalyzer module.
+    .LINK
+        https://chaospheremk.github.io/PermissionAnalyzer/
     #>
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
         'PSUseShouldProcessForStateChangingFunctions', '',

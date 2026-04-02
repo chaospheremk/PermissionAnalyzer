@@ -53,8 +53,14 @@ function New-PAActivityProfile {
             DataSource               = 'LogAnalytics'
         }
         $profile = New-PAActivityProfile @profileParams
+    .INPUTS
+        None.
     .OUTPUTS
         PSCustomObject (PA.ActivityProfile)
+    .NOTES
+        Part of the PermissionAnalyzer module.
+    .LINK
+        https://chaospheremk.github.io/PermissionAnalyzer/
     #>
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
         'PSUseShouldProcessForStateChangingFunctions', '',

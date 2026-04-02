@@ -26,7 +26,7 @@ function Get-PAPimEligibility {
     .EXAMPLE
         $session = Connect-PASession -TenantId '<tenant-id>'
         $result = Get-PAPimEligibility -Session $session
-        $result.Items | Where-Object Source -eq 'PimEntra'
+        $result.Items.Where({ $_.Source -eq 'PimEntra' })
 
         Collects all PIM eligible assignments and filters to Entra PIM.
     .EXAMPLE
@@ -35,8 +35,14 @@ function Get-PAPimEligibility {
         $result.Items | Group-Object Source | Select-Object Name, Count
 
         Shows the count of eligible assignments by source.
+    .INPUTS
+        None.
     .OUTPUTS
         PSCustomObject (PA.CollectorResult)
+    .NOTES
+        Part of the PermissionAnalyzer module.
+    .LINK
+        https://chaospheremk.github.io/PermissionAnalyzer/commands/Get-PAPimEligibility/
     #>
     [CmdletBinding()]
     param(
@@ -76,7 +82,8 @@ function Get-PAPimEligibility {
             Write-Verbose "Get-PAPimEligibility: loaded $($roleDefMap.Count) role definitions"
         }
         catch {
-            $warnings.Add("Failed to fetch role definitions: $($_.Exception.Message)")
+            $ex = $_
+            $warnings.Add("Failed to fetch role definitions: $($ex.Exception.Message)")
             Write-Warning 'Get-PAPimEligibility: role definitions unavailable — role names will be empty'
         }
 
@@ -100,7 +107,7 @@ function Get-PAPimEligibility {
             if (-not $expandWorked) {
                 Write-Warning 'Get-PAPimEligibility: $expand=principal not available; falling back to batch resolution'
                 $warnings.Add('$expand=principal not available for Entra PIM; principal types will default to User')
-                $allPrincipalIds = @($rawEligibilities | ForEach-Object { $_.principalId })
+                $allPrincipalIds = @(foreach ($re in $rawEligibilities) { $re.principalId })
                 $nameMap = Resolve-PAPrincipal -PrincipalIds $allPrincipalIds -Session $Session
             }
 
@@ -188,9 +195,10 @@ function Get-PAPimEligibility {
         }
     }
     catch {
+        $ex = $_
         $entraFailed = $true
-        $errors.Add("Entra PIM failed: $($_.Exception.Message)")
-        Write-Warning "Get-PAPimEligibility: Entra PIM collection failed — $($_.Exception.Message)"
+        $errors.Add("Entra PIM failed: $($ex.Exception.Message)")
+        Write-Warning "Get-PAPimEligibility: Entra PIM collection failed — $($ex.Exception.Message)"
     }
 
     # =========================================================================
@@ -277,9 +285,10 @@ function Get-PAPimEligibility {
                 }
             }
             catch {
+                $ex = $_
                 $subsFailed++
-                $warnings.Add("Azure PIM failed for subscription $subId`: $($_.Exception.Message)")
-                Write-Warning "Get-PAPimEligibility: Azure PIM failed for subscription $subId — $($_.Exception.Message)"
+                $warnings.Add("Azure PIM failed for subscription $subId`: $($ex.Exception.Message)")
+                Write-Warning "Get-PAPimEligibility: Azure PIM failed for subscription $subId — $($ex.Exception.Message)"
             }
         }
 

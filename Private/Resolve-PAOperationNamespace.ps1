@@ -34,9 +34,15 @@ function Resolve-PAOperationNamespace {
     .EXAMPLE
         Resolve-PAOperationNamespace -OperationName 'Totally unknown' -Category 'UnknownCategory'
         # Returns: $null
+    .INPUTS
+        None.
     .OUTPUTS
         System.String or $null
         The resolved namespace prefix, or null if unmapped.
+    .NOTES
+        Part of the PermissionAnalyzer module.
+    .LINK
+        https://chaospheremk.github.io/PermissionAnalyzer/
     #>
     [CmdletBinding()]
     param(

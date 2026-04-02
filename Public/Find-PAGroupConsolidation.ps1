@@ -19,8 +19,14 @@ function Find-PAGroupConsolidation {
         $findings = Find-PAGroupConsolidation -Assignments $assignments
     .EXAMPLE
         $findings = Find-PAGroupConsolidation -Assignments $assignments -MinimumGroupSize 5
+    .INPUTS
+        None.
     .OUTPUTS
         PSCustomObject (PA.CollectorResult) wrapping PA.Finding items.
+    .NOTES
+        Part of the PermissionAnalyzer module.
+    .LINK
+        https://chaospheremk.github.io/PermissionAnalyzer/commands/Find-PAGroupConsolidation/
     #>
     [CmdletBinding()]
     param(
@@ -41,7 +47,7 @@ function Find-PAGroupConsolidation {
     $criticalRoles = [System.Collections.Generic.HashSet[string]]::new(
         [System.StringComparer]::OrdinalIgnoreCase
     )
-    @(
+    $roleNames = @(
         'Global Administrator'
         'Privileged Role Administrator'
         'Privileged Authentication Administrator'
@@ -53,7 +59,8 @@ function Find-PAGroupConsolidation {
         'User Access Administrator'
         'Owner'
         'Contributor'
-    ) | ForEach-Object { [void]$criticalRoles.Add($_) }
+    )
+    foreach ($roleName in $roleNames) { [void]$criticalRoles.Add($roleName) }
 
     # Early return for empty assignments
     if ($Assignments.Count -eq 0) {
@@ -71,10 +78,10 @@ function Find-PAGroupConsolidation {
         $findings = [System.Collections.Generic.List[object]]::new()
 
         # Filter to individual assignments (User/ServicePrincipal only, exclude DelegatedGrant)
-        $eligible = $Assignments | Where-Object {
+        $eligible = $Assignments.Where({
             ($_.PrincipalType -eq 'User' -or $_.PrincipalType -eq 'ServicePrincipal' -or $_.PrincipalType -eq 'ManagedIdentity') -and
             $_.AssignmentType -ne 'DelegatedGrant'
-        }
+        })
 
         # Group by Source|RoleDefinitionId|Scope
         $groups = @{}
@@ -105,7 +112,7 @@ function Find-PAGroupConsolidation {
 
                 # Sort principals alphabetically for deterministic output
                 $sortedIds = @($principalMap.Keys | Sort-Object)
-                $sortedNames = @($sortedIds | ForEach-Object { $principalMap[$_] })
+                $sortedNames = @(foreach ($id in $sortedIds) { $principalMap[$id] })
 
                 # Use first alphabetically for FindingId determinism
                 $firstPrincipalId = $sortedIds[0]
@@ -160,7 +167,8 @@ function Find-PAGroupConsolidation {
                 $findings.Add((New-PAFinding @findingParams))
             }
             catch {
-                $msg = "Failed to analyze consolidation group '$($entry.Key)': $($_.Exception.Message)"
+                $ex = $_
+                $msg = "Failed to analyze consolidation group '$($entry.Key)': $($ex.Exception.Message)"
                 $warnings.Add($msg)
                 Write-Warning "Find-PAGroupConsolidation: $msg"
             }
@@ -179,9 +187,10 @@ function Find-PAGroupConsolidation {
         return New-PACollectorResult @resultParams
     }
     catch {
+        $ex = $_
         $stopwatch.Stop()
-        $errors.Add($_.Exception.Message)
-        Write-Warning "Find-PAGroupConsolidation: failed — $($_.Exception.Message)"
+        $errors.Add($ex.Exception.Message)
+        Write-Warning "Find-PAGroupConsolidation: failed — $($ex.Exception.Message)"
 
         $resultParams = @{
             Collector = 'Find-PAGroupConsolidation'
