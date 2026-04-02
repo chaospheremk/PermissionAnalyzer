@@ -57,8 +57,14 @@ function New-PAFinding {
             RemediationAction = 'Remove'
         }
         $finding = New-PAFinding @findingParams
+    .INPUTS
+        None.
     .OUTPUTS
         PSCustomObject (PA.Finding)
+    .NOTES
+        Part of the PermissionAnalyzer module.
+    .LINK
+        https://chaospheremk.github.io/PermissionAnalyzer/
     #>
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
         'PSUseShouldProcessForStateChangingFunctions', '',

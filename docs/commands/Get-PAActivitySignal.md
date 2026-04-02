@@ -1,7 +1,7 @@
 ---
 document type: cmdlet
 external help file: PermissionAnalyzer-Help.xml
-HelpUri: ''
+HelpUri: https://chaospheremk.github.io/PermissionAnalyzer/commands/Get-PAActivitySignal/
 Locale: en-US
 Module Name: PermissionAnalyzer
 ms.date: 01/01/1970
@@ -55,10 +55,14 @@ Find-PALeastPrivilegeGap.
 
 ### EXAMPLE 1
 
-' -WorkspaceId '<workspace-id>'
+$sessionParams = @{
+    TenantId    = '<tenant-id>'
+    WorkspaceId = '<workspace-id>'
+}
+$session = Connect-PASession @sessionParams
 $assignments = ($entraResult.Items + $rbacResult.Items)
 $result = Get-PAActivitySignal -Session $session -Assignments $assignments
-$result.Items | Where-Object ActivityTier -ge 1
+$result.Items.Where({ $_.ActivityTier -ge 1 })
 
 Collects activity signals and filters to inactive principals.
 
@@ -154,6 +158,10 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ## INPUTS
 
+### None.
+
+
+
 ## OUTPUTS
 
 ### PSCustomObject (PA.CollectorResult)
@@ -162,7 +170,9 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ## NOTES
 
+Part of the PermissionAnalyzer module.
+
+
 ## RELATED LINKS
 
-
-
+- [](https://chaospheremk.github.io/PermissionAnalyzer/commands/Get-PAActivitySignal/)

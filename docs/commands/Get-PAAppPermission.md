@@ -1,7 +1,7 @@
 ---
 document type: cmdlet
 external help file: PermissionAnalyzer-Help.xml
-HelpUri: ''
+HelpUri: https://chaospheremk.github.io/PermissionAnalyzer/commands/Get-PAAppPermission/
 Locale: en-US
 Module Name: PermissionAnalyzer
 ms.date: 01/01/1970
@@ -49,7 +49,7 @@ AssignmentType='DelegatedGrant'.
 
 '
 $result = Get-PAAppPermission -Session $session
-$result.Items | Where-Object AssignmentType -eq 'AppRole'
+$result.Items.Where({ $_.AssignmentType -eq 'AppRole' })
 
 Collects all app permissions and filters to application role assignments.
 
@@ -95,6 +95,10 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ## INPUTS
 
+### None.
+
+
+
 ## OUTPUTS
 
 ### PSCustomObject (PA.CollectorResult)
@@ -103,7 +107,9 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ## NOTES
 
+Part of the PermissionAnalyzer module.
+
+
 ## RELATED LINKS
 
-
-
+- [](https://chaospheremk.github.io/PermissionAnalyzer/commands/Get-PAAppPermission/)

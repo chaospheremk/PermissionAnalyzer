@@ -29,9 +29,15 @@ function Invoke-PALogAnalyticsQuery {
             Timespan    = [timespan]::FromDays(30)
         }
         $rows = Invoke-PALogAnalyticsQuery @queryParams
+    .INPUTS
+        None.
     .OUTPUTS
         System.Object[]
         Array of result row objects from the KQL query.
+    .NOTES
+        Part of the PermissionAnalyzer module.
+    .LINK
+        https://chaospheremk.github.io/PermissionAnalyzer/
     #>
     [CmdletBinding()]
     param(

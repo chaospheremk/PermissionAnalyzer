@@ -1,7 +1,7 @@
 ---
 document type: cmdlet
 external help file: PermissionAnalyzer-Help.xml
-HelpUri: ''
+HelpUri: https://chaospheremk.github.io/PermissionAnalyzer/commands/Get-PAEntraRoleAssignment/
 Locale: en-US
 Module Name: PermissionAnalyzer
 ms.date: 01/01/1970
@@ -96,6 +96,10 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ## INPUTS
 
+### None.
+
+
+
 ## OUTPUTS
 
 ### PSCustomObject (PA.CollectorResult)
@@ -104,7 +108,9 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ## NOTES
 
+Part of the PermissionAnalyzer module.
+
+
 ## RELATED LINKS
 
-
-
+- [](https://chaospheremk.github.io/PermissionAnalyzer/commands/Get-PAEntraRoleAssignment/)

@@ -1,7 +1,7 @@
 ---
 document type: cmdlet
 external help file: PermissionAnalyzer-Help.xml
-HelpUri: ''
+HelpUri: https://chaospheremk.github.io/PermissionAnalyzer/commands/Find-PALeastPrivilegeGap/
 Locale: en-US
 Module Name: PermissionAnalyzer
 ms.date: 01/01/1970
@@ -48,7 +48,12 @@ $findings = Find-PALeastPrivilegeGap -Assignments $assignments -ActivityProfiles
 
 ### EXAMPLE 2
 
-$findings = Find-PALeastPrivilegeGap -Assignments $assignments -ActivityProfiles $actProfiles -GapThreshold 0.3
+$findingParams = @{
+    Assignments      = $assignments
+    ActivityProfiles = $actProfiles
+    GapThreshold     = 0.3
+}
+$findings = Find-PALeastPrivilegeGap @findingParams
 
 ## PARAMETERS
 
@@ -127,6 +132,10 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ## INPUTS
 
+### None.
+
+
+
 ## OUTPUTS
 
 ### PSCustomObject (PA.CollectorResult) wrapping PA.Finding items.
@@ -135,7 +144,9 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ## NOTES
 
+Part of the PermissionAnalyzer module.
+
+
 ## RELATED LINKS
 
-
-
+- [](https://chaospheremk.github.io/PermissionAnalyzer/commands/Find-PALeastPrivilegeGap/)

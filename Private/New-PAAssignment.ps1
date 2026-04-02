@@ -56,8 +56,14 @@ function New-PAAssignment {
             AssignmentType   = 'Direct'
         }
         $assignment = New-PAAssignment @assignmentParams
+    .INPUTS
+        None.
     .OUTPUTS
         PSCustomObject (PA.Assignment)
+    .NOTES
+        Part of the PermissionAnalyzer module.
+    .LINK
+        https://chaospheremk.github.io/PermissionAnalyzer/
     #>
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
         'PSUseShouldProcessForStateChangingFunctions', '',

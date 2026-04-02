@@ -33,8 +33,14 @@ function Get-PAEntraRoleAssignment {
         $result.ItemCount # number of assignments found
 
         Checks the collection status and item count.
+    .INPUTS
+        None.
     .OUTPUTS
         PSCustomObject (PA.CollectorResult)
+    .NOTES
+        Part of the PermissionAnalyzer module.
+    .LINK
+        https://chaospheremk.github.io/PermissionAnalyzer/commands/Get-PAEntraRoleAssignment/
     #>
     [CmdletBinding()]
     param(
@@ -67,7 +73,8 @@ function Get-PAEntraRoleAssignment {
             Write-Verbose "Get-PAEntraRoleAssignment: loaded $($roleDefMap.Count) role definitions"
         }
         catch {
-            $warnings.Add("Failed to fetch role definitions: $($_.Exception.Message)")
+            $ex = $_
+            $warnings.Add("Failed to fetch role definitions: $($ex.Exception.Message)")
             Write-Warning 'Get-PAEntraRoleAssignment: role definitions unavailable — role names will be empty'
         }
 
@@ -104,7 +111,7 @@ function Get-PAEntraRoleAssignment {
         if (-not $expandWorked) {
             Write-Warning 'Get-PAEntraRoleAssignment: $expand=principal not available; falling back to batch resolution'
             $warnings.Add('$expand=principal not available; principal types will default to User')
-            $allPrincipalIds = @($rawAssignments | ForEach-Object { $_.principalId })
+            $allPrincipalIds = @(foreach ($ra in $rawAssignments) { $ra.principalId })
             $nameMap = Resolve-PAPrincipal -PrincipalIds $allPrincipalIds -Session $Session
         }
 
@@ -202,9 +209,10 @@ function Get-PAEntraRoleAssignment {
         return New-PACollectorResult @resultParams
     }
     catch {
+        $ex = $_
         $stopwatch.Stop()
-        $errors.Add($_.Exception.Message)
-        Write-Warning "Get-PAEntraRoleAssignment: failed — $($_.Exception.Message)"
+        $errors.Add($ex.Exception.Message)
+        Write-Warning "Get-PAEntraRoleAssignment: failed — $($ex.Exception.Message)"
 
         $resultParams = @{
             Collector = 'Get-PAEntraRoleAssignment'

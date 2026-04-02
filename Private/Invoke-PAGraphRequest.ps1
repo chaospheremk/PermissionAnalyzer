@@ -44,9 +44,15 @@ function Invoke-PAGraphRequest {
             ConsistencyLevel = 'eventual'
         }
         $schedules = Invoke-PAGraphRequest @graphParams
+    .INPUTS
+        None.
     .OUTPUTS
         System.Object[]
         Array of result objects from the Graph API response.
+    .NOTES
+        Part of the PermissionAnalyzer module.
+    .LINK
+        https://chaospheremk.github.io/PermissionAnalyzer/
     #>
     [CmdletBinding()]
     param(

@@ -53,8 +53,14 @@ function Connect-PASession {
         $session = Connect-PASession @sessionParams
 
         Scopes the audit to two specific subscriptions.
+    .INPUTS
+        None.
     .OUTPUTS
         PSCustomObject (PA.Session)
+    .NOTES
+        Part of the PermissionAnalyzer module.
+    .LINK
+        https://chaospheremk.github.io/PermissionAnalyzer/commands/Connect-PASession/
     #>
     [CmdletBinding()]
     param(
@@ -94,7 +100,7 @@ function Connect-PASession {
 
         # Best-effort scope check — app-only auth may not list scopes
         if ($graphContext.Scopes) {
-            $missingScopes = $requiredScopes | Where-Object { $_ -notin $graphContext.Scopes }
+            $missingScopes = $requiredScopes.Where({ $_ -notin $graphContext.Scopes })
             if ($missingScopes) {
                 Write-Warning "Connect-PASession: missing Graph scopes: $($missingScopes -join ', '). Some collectors may fail."
             }
@@ -152,9 +158,8 @@ function Connect-PASession {
     }
     else {
         Write-Verbose 'Connect-PASession: discovering enabled subscriptions'
-        $subscriptions = Get-AzSubscription -TenantId $TenantId |
-            Where-Object { $_.State -eq 'Enabled' }
-        $subscriptionIds = @($subscriptions | ForEach-Object { $_.Id })
+        $subscriptions = @(Get-AzSubscription -TenantId $TenantId).Where({ $_.State -eq 'Enabled' })
+        $subscriptionIds = @(foreach ($sub in $subscriptions) { $sub.Id })
     }
 
     if ($subscriptionIds.Count -eq 0) {

@@ -22,7 +22,7 @@ function Get-PAAppPermission {
     .EXAMPLE
         $session = Connect-PASession -TenantId '<tenant-id>'
         $result = Get-PAAppPermission -Session $session
-        $result.Items | Where-Object AssignmentType -eq 'AppRole'
+        $result.Items.Where({ $_.AssignmentType -eq 'AppRole' })
 
         Collects all app permissions and filters to application role assignments.
     .EXAMPLE
@@ -31,8 +31,14 @@ function Get-PAAppPermission {
         $result.Items | Group-Object AssignmentType | Select-Object Name, Count
 
         Shows the count of permissions by assignment type.
+    .INPUTS
+        None.
     .OUTPUTS
         PSCustomObject (PA.CollectorResult)
+    .NOTES
+        Part of the PermissionAnalyzer module.
+    .LINK
+        https://chaospheremk.github.io/PermissionAnalyzer/commands/Get-PAAppPermission/
     #>
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
         'PSReviewUnusedParameter', 'Session',
@@ -160,9 +166,10 @@ function Get-PAAppPermission {
                     }
                 }
                 catch {
+                    $ex = $_
                     $spsFailed++
-                    $warnings.Add("appRoleAssignments failed for SP '$($sp.id)': $($_.Exception.Message)")
-                    Write-Warning "Get-PAAppPermission: appRoleAssignments failed for SP $($sp.id) — $($_.Exception.Message)"
+                    $warnings.Add("appRoleAssignments failed for SP '$($sp.id)': $($ex.Exception.Message)")
+                    Write-Warning "Get-PAAppPermission: appRoleAssignments failed for SP $($sp.id) — $($ex.Exception.Message)"
                 }
             }
 
@@ -171,9 +178,10 @@ function Get-PAAppPermission {
             }
         }
         catch {
+            $ex = $_
             $appRoleFailed = $true
-            $errors.Add("appRoleAssignment iteration failed: $($_.Exception.Message)")
-            Write-Warning "Get-PAAppPermission: appRoleAssignment iteration aborted — $($_.Exception.Message)"
+            $errors.Add("appRoleAssignment iteration failed: $($ex.Exception.Message)")
+            Write-Warning "Get-PAAppPermission: appRoleAssignment iteration aborted — $($ex.Exception.Message)"
         }
 
         # =================================================================
@@ -238,9 +246,10 @@ function Get-PAAppPermission {
             }
         }
         catch {
+            $ex = $_
             $delegatedFailed = $true
-            $errors.Add("oauth2PermissionGrants failed: $($_.Exception.Message)")
-            Write-Warning "Get-PAAppPermission: oauth2PermissionGrants collection failed — $($_.Exception.Message)"
+            $errors.Add("oauth2PermissionGrants failed: $($ex.Exception.Message)")
+            Write-Warning "Get-PAAppPermission: oauth2PermissionGrants collection failed — $($ex.Exception.Message)"
         }
 
         # =================================================================
@@ -273,9 +282,10 @@ function Get-PAAppPermission {
     }
     catch {
         # SP listing failed — nothing else can proceed
+        $ex = $_
         $stopwatch.Stop()
-        $errors.Add($_.Exception.Message)
-        Write-Warning "Get-PAAppPermission: failed — $($_.Exception.Message)"
+        $errors.Add($ex.Exception.Message)
+        Write-Warning "Get-PAAppPermission: failed — $($ex.Exception.Message)"
 
         $resultParams = @{
             Collector = 'Get-PAAppPermission'

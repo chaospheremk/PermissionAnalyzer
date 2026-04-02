@@ -31,8 +31,14 @@ function New-PACollectorResult {
             Duration  = $stopwatch.Elapsed
         }
         $result = New-PACollectorResult @resultParams
+    .INPUTS
+        None.
     .OUTPUTS
         PSCustomObject (PA.CollectorResult)
+    .NOTES
+        Part of the PermissionAnalyzer module.
+    .LINK
+        https://chaospheremk.github.io/PermissionAnalyzer/
     #>
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
         'PSUseShouldProcessForStateChangingFunctions', '',

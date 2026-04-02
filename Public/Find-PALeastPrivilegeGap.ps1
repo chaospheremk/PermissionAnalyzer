@@ -24,9 +24,20 @@ function Find-PALeastPrivilegeGap {
     .EXAMPLE
         $findings = Find-PALeastPrivilegeGap -Assignments $assignments -ActivityProfiles $actProfiles
     .EXAMPLE
-        $findings = Find-PALeastPrivilegeGap -Assignments $assignments -ActivityProfiles $actProfiles -GapThreshold 0.3
+        $findingParams = @{
+            Assignments      = $assignments
+            ActivityProfiles = $actProfiles
+            GapThreshold     = 0.3
+        }
+        $findings = Find-PALeastPrivilegeGap @findingParams
+    .INPUTS
+        None.
     .OUTPUTS
         PSCustomObject (PA.CollectorResult) wrapping PA.Finding items.
+    .NOTES
+        Part of the PermissionAnalyzer module.
+    .LINK
+        https://chaospheremk.github.io/PermissionAnalyzer/commands/Find-PALeastPrivilegeGap/
     #>
     [CmdletBinding()]
     param(
@@ -51,7 +62,7 @@ function Find-PALeastPrivilegeGap {
     $criticalRoles = [System.Collections.Generic.HashSet[string]]::new(
         [System.StringComparer]::OrdinalIgnoreCase
     )
-    @(
+    $roleNames = @(
         'Global Administrator'
         'Privileged Role Administrator'
         'Privileged Authentication Administrator'
@@ -63,7 +74,8 @@ function Find-PALeastPrivilegeGap {
         'User Access Administrator'
         'Owner'
         'Contributor'
-    ) | ForEach-Object { [void]$criticalRoles.Add($_) }
+    )
+    foreach ($roleName in $roleNames) { [void]$criticalRoles.Add($roleName) }
 
     # Early return for empty assignments
     if ($Assignments.Count -eq 0) {
@@ -231,7 +243,8 @@ function Find-PALeastPrivilegeGap {
                 $findings.Add((New-PAFinding @findingParams))
             }
             catch {
-                $msg = "Failed to analyze assignment for '$($assignment.PrincipalId)': $($_.Exception.Message)"
+                $ex = $_
+                $msg = "Failed to analyze assignment for '$($assignment.PrincipalId)': $($ex.Exception.Message)"
                 $warnings.Add($msg)
                 Write-Warning "Find-PALeastPrivilegeGap: $msg"
             }
@@ -250,9 +263,10 @@ function Find-PALeastPrivilegeGap {
         return New-PACollectorResult @resultParams
     }
     catch {
+        $ex = $_
         $stopwatch.Stop()
-        $errors.Add($_.Exception.Message)
-        Write-Warning "Find-PALeastPrivilegeGap: failed — $($_.Exception.Message)"
+        $errors.Add($ex.Exception.Message)
+        Write-Warning "Find-PALeastPrivilegeGap: failed — $($ex.Exception.Message)"
 
         $resultParams = @{
             Collector = 'Find-PALeastPrivilegeGap'

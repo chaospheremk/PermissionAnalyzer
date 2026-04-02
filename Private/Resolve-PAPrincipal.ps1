@@ -20,9 +20,15 @@ function Resolve-PAPrincipal {
         $ids = @('<principal-id-1>', '<principal-id-2>')
         $nameMap = Resolve-PAPrincipal -PrincipalIds $ids
         $nameMap['<principal-id-1>']  # returns the display name
+    .INPUTS
+        None.
     .OUTPUTS
         System.Collections.Hashtable
         Hashtable mapping principal ID strings to display name strings.
+    .NOTES
+        Part of the PermissionAnalyzer module.
+    .LINK
+        https://chaospheremk.github.io/PermissionAnalyzer/
     #>
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
         'PSReviewUnusedParameter', 'Session',
@@ -49,7 +55,7 @@ function Resolve-PAPrincipal {
         $endIndex = [math]::Min($i + $batchSize - 1, $uniqueIds.Count - 1)
         $batch = $uniqueIds[$i..$endIndex]
 
-        $idList = ($batch | ForEach-Object { "'$_'" }) -join ','
+        $idList = (@(foreach ($id in $batch) { "'$id'" }) -join ',')
         $filter = "id in ($idList)"
 
         $graphParams = @{
@@ -81,7 +87,7 @@ function Resolve-PAPrincipal {
         }
     }
 
-    $resolvedCount = ($resolved.Values | Where-Object { $_ -notlike '`[Deleted*' }).Count
+    $resolvedCount = $resolved.Values.Where({ $_ -notlike '`[Deleted*' }).Count
     Write-Verbose "Resolve-PAPrincipal: resolved $resolvedCount of $($uniqueIds.Count) principal IDs"
 
     return $resolved

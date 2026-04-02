@@ -33,8 +33,14 @@ function Get-PAAzureRbacAssignment {
         $result.Items | Group-Object ScopeType | Select-Object Name, Count
 
         Shows the count of assignments by scope type.
+    .INPUTS
+        None.
     .OUTPUTS
         PSCustomObject (PA.CollectorResult)
+    .NOTES
+        Part of the PermissionAnalyzer module.
+    .LINK
+        https://chaospheremk.github.io/PermissionAnalyzer/commands/Get-PAAzureRbacAssignment/
     #>
     [CmdletBinding()]
     param(
@@ -87,7 +93,8 @@ function Get-PAAzureRbacAssignment {
                 }
             }
             catch {
-                $warnings.Add("Failed to fetch role definitions for subscription $subId`: $($_.Exception.Message)")
+                $ex = $_
+                $warnings.Add("Failed to fetch role definitions for subscription $subId`: $($ex.Exception.Message)")
                 Write-Warning "Get-PAAzureRbacAssignment: role definitions unavailable for $subId — RoleType will be empty"
             }
 
@@ -164,9 +171,10 @@ function Get-PAAzureRbacAssignment {
             }
         }
         catch {
+            $ex = $_
             $subsFailed++
-            $errors.Add("Subscription $subId`: $($_.Exception.Message)")
-            Write-Warning "Get-PAAzureRbacAssignment: failed for subscription $subId — $($_.Exception.Message)"
+            $errors.Add("Subscription $subId`: $($ex.Exception.Message)")
+            Write-Warning "Get-PAAzureRbacAssignment: failed for subscription $subId — $($ex.Exception.Message)"
         }
     }
 
