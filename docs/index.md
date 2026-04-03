@@ -5,14 +5,20 @@ PowerShell 7+ module that audits Entra ID and Azure RBAC permissions across a si
 ## Quick Start
 
 ```powershell
-# Interactive mode — full audit with HTML report
-$session = Connect-PASession -TenantId '<tenant-id>' -WorkspaceId '<workspace-id>'
-Invoke-PAPermissionAudit -Session $session -ExportFormat HTML -GenerateRemediation
+# Full audit with reports and remediation scripts
+$auditParams = @{
+    TenantId        = '<tenant-id>'
+    WorkspaceId     = '<workspace-customer-id>'
+    OutputDirectory = './audit-output'
+    Format          = @('CSV', 'JSON', 'HTML')
+}
+$audit = Invoke-PAPermissionAudit @auditParams -Verbose
 
-# Pipeline mode — filter critical findings
-Invoke-PAPermissionAudit -TenantId '<tenant-id>' |
-    Where-Object Severity -eq 'Critical'
+# View results
+$audit.FindingsBySeverity
 ```
+
+See the [User Guide](guide.md) for detailed walkthrough, parameter tuning, and troubleshooting.
 
 ## Functions
 
@@ -26,7 +32,7 @@ Invoke-PAPermissionAudit -TenantId '<tenant-id>' |
 | Validation | `Test-PAFindingAccuracy` |
 | Orchestrator | `Invoke-PAPermissionAudit` |
 
-See the [command reference](commands/) for detailed parameter documentation once public functions are implemented.
+See the [command reference](commands/) for detailed parameter documentation.
 
 ## Permission Planes
 
