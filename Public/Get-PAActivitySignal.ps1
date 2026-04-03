@@ -295,13 +295,52 @@ AzureActivity
                 Write-Warning "Get-PAActivitySignal: user signInActivity query failed — $($ex.Exception.Message)"
             }
 
-            # SP sign-in limitation
+            # SP sign-ins via /auditLogs/signIns (covers servicePrincipal and managedIdentity)
             $spPrincipals = $principalIds.Where({
-                $principalMap[$_].PrincipalType -eq 'ServicePrincipal'
+                $principalMap[$_].PrincipalType -eq 'ServicePrincipal' -or
+                $principalMap[$_].PrincipalType -eq 'ManagedIdentity'
             })
             if ($spPrincipals.Count -gt 0) {
-                $warnings.Add("Graph API path: $($spPrincipals.Count) service principals have no sign-in coverage (no v1.0 endpoint). Use Log Analytics for SP activity.")
-                Write-Warning "Get-PAActivitySignal: $($spPrincipals.Count) SPs have no sign-in data on Graph API path"
+                try {
+                    Write-Verbose "Get-PAActivitySignal: fetching SP/MI sign-ins from /auditLogs/signIns (Graph API)"
+                    $cutoff = [datetime]::UtcNow.AddDays(-$LookbackDays).ToString('yyyy-MM-ddTHH:mm:ssZ')
+                    $spSignInParams = @{
+                        Uri    = '/auditLogs/signIns'
+                        Filter = "createdDateTime ge $cutoff and signInEventTypes/any(t:t eq 'servicePrincipal' or t eq 'managedIdentity')"
+                        Select = @('appId', 'servicePrincipalId', 'createdDateTime')
+                    }
+                    $spSignIns = Invoke-PAGraphRequest @spSignInParams
+
+                    if ($spSignIns) {
+                        foreach ($si in @($spSignIns)) {
+                            $spId = $si.servicePrincipalId
+                            if (-not $spId -or -not $principalMap.ContainsKey($spId)) {
+                                continue
+                            }
+                            $siDt = if ($si.createdDateTime) { [datetime]$si.createdDateTime } else { $null }
+
+                            if ($signInMap.ContainsKey($spId)) {
+                                $existing = $signInMap[$spId]
+                                $existing.SignInCount++
+                                if ($siDt -and (-not $existing.LastSignIn -or $siDt -gt $existing.LastSignIn)) {
+                                    $existing.LastSignIn = $siDt
+                                }
+                            }
+                            else {
+                                $signInMap[$spId] = @{
+                                    LastSignIn  = $siDt
+                                    SignInCount = 1
+                                }
+                            }
+                        }
+                    }
+                    Write-Verbose "Get-PAActivitySignal: SP/MI sign-in data for $($spPrincipals.Count) principals"
+                }
+                catch {
+                    $ex = $_
+                    $warnings.Add("SP sign-in query failed: $($ex.Exception.Message)")
+                    Write-Warning "Get-PAActivitySignal: SP/MI sign-in query failed — $($ex.Exception.Message). SP activity may be incomplete."
+                }
             }
 
             # Directory audit logs for role activity
