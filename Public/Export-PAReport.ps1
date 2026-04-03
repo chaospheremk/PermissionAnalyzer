@@ -210,10 +210,18 @@ function Export-PAReport {
                         [void]$sb.AppendLine('        .summary-grid { display: flex; gap: 2em; flex-wrap: wrap; margin-bottom: 1em; }')
                         [void]$sb.AppendLine('        .summary-grid table { width: auto; min-width: 220px; }')
                         [void]$sb.AppendLine('        .summary-grid td.count { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }')
-                        [void]$sb.AppendLine('        .findings-table { width: 100%; }')
-                        [void]$sb.AppendLine('        .findings-table td.col-title { max-width: 320px; }')
-                        [void]$sb.AppendLine('        .findings-table td.col-scope { max-width: 260px; word-break: break-all; font-family: "Cascadia Code", "Fira Code", "Consolas", monospace; font-size: 0.82em; color: var(--text-secondary); }')
-                        [void]$sb.AppendLine('        .findings-table td.col-rec { max-width: 300px; font-size: 0.88em; color: var(--text-secondary); }')
+                        [void]$sb.AppendLine('        .findings-table { width: 100%; table-layout: fixed; }')
+                        [void]$sb.AppendLine('        .findings-table th:nth-child(1) { width: 7%; }')
+                        [void]$sb.AppendLine('        .findings-table th:nth-child(2) { width: 11%; }')
+                        [void]$sb.AppendLine('        .findings-table th:nth-child(3) { width: 22%; }')
+                        [void]$sb.AppendLine('        .findings-table th:nth-child(4) { width: 12%; }')
+                        [void]$sb.AppendLine('        .findings-table th:nth-child(5) { width: 10%; }')
+                        [void]$sb.AppendLine('        .findings-table th:nth-child(6) { width: 14%; }')
+                        [void]$sb.AppendLine('        .findings-table th:nth-child(7) { width: 16%; }')
+                        [void]$sb.AppendLine('        .findings-table th:nth-child(8) { width: 8%; }')
+                        [void]$sb.AppendLine('        .findings-table .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 0; cursor: help; }')
+                        [void]$sb.AppendLine('        .findings-table td.col-scope { font-family: "Cascadia Code", "Fira Code", "Consolas", monospace; font-size: 0.82em; color: var(--text-secondary); }')
+                        [void]$sb.AppendLine('        .findings-table td.col-rec { font-size: 0.88em; color: var(--text-secondary); }')
                         [void]$sb.AppendLine('        footer { margin-top: 3em; padding-top: 1.5em; border-top: 1px solid var(--border); color: var(--text-faint); font-size: 0.85em; }')
                         [void]$sb.AppendLine('    </style>')
                         [void]$sb.AppendLine('</head>')
@@ -271,7 +279,7 @@ function Export-PAReport {
                                 $rec = [System.Net.WebUtility]::HtmlEncode($f.Recommendation)
                                 $catLabel = if ($categoryLabels.ContainsKey($f.Category)) { $categoryLabels[$f.Category] } else { $f.Category }
                                 $remLabel = if ($remediationLabels.ContainsKey($f.RemediationAction)) { $remediationLabels[$f.RemediationAction] } else { $f.RemediationAction }
-                                [void]$sb.AppendLine("        <tr><td><span class=`"badge severity-$($f.Severity)`">$($f.Severity)</span></td><td>$catLabel</td><td class=`"col-title`">$title</td><td>$principal</td><td>$role</td><td class=`"col-scope`">$scope</td><td class=`"col-rec`">$rec</td><td>$remLabel</td></tr>")
+                                [void]$sb.AppendLine("        <tr><td><span class=`"badge severity-$($f.Severity)`">$($f.Severity)</span></td><td class=`"truncate`" title=`"$catLabel`">$catLabel</td><td class=`"truncate`" title=`"$title`">$title</td><td class=`"truncate`" title=`"$principal`">$principal</td><td class=`"truncate`" title=`"$role`">$role</td><td class=`"truncate col-scope`" title=`"$scope`">$scope</td><td class=`"truncate col-rec`" title=`"$rec`">$rec</td><td>$remLabel</td></tr>")
                             }
                         }
 

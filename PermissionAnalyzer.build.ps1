@@ -37,12 +37,12 @@ task Clean {
 task Lint {
     # Scan module source directories — excludes .build.ps1 (Invoke-Build DSL aliases
     # like task/assert/exec trigger PSAvoidUsingCmdletAliases false positives)
+    # and scripts/ (interactive utilities that legitimately use Write-Host)
     $scanPaths = @(
         Join-Path $PSScriptRoot $Config.PublicDir
         Join-Path $PSScriptRoot $Config.PrivateDir
         $ManifestPath
         Join-Path $PSScriptRoot "$ModuleName.psm1"
-        Join-Path $PSScriptRoot 'scripts'
     ) | Where-Object { Test-Path $_ }
 
     $settingsPath = Join-Path $PSScriptRoot $Config.PSSASettingsPath
