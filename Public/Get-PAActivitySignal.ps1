@@ -295,51 +295,52 @@ AzureActivity
                 Write-Warning "Get-PAActivitySignal: user signInActivity query failed — $($ex.Exception.Message)"
             }
 
-            # SP sign-ins via /auditLogs/signIns (covers servicePrincipal and managedIdentity)
+            # SP/MI sign-ins via per-principal /auditLogs/signIns queries
             $spPrincipals = $principalIds.Where({
                 $principalMap[$_].PrincipalType -eq 'ServicePrincipal' -or
                 $principalMap[$_].PrincipalType -eq 'ManagedIdentity'
             })
             if ($spPrincipals.Count -gt 0) {
-                try {
-                    Write-Verbose "Get-PAActivitySignal: fetching SP/MI sign-ins from /auditLogs/signIns (Graph API)"
-                    $cutoff = [datetime]::UtcNow.AddDays(-$LookbackDays).ToString('yyyy-MM-ddTHH:mm:ssZ')
-                    $spSignInParams = @{
-                        Uri    = '/auditLogs/signIns'
-                        Filter = "createdDateTime ge $cutoff and signInEventTypes/any(t:t eq 'servicePrincipal' or t eq 'managedIdentity')"
-                        Select = @('appId', 'servicePrincipalId', 'createdDateTime')
-                    }
-                    $spSignIns = Invoke-PAGraphRequest @spSignInParams
+                Write-Verbose "Get-PAActivitySignal: fetching sign-ins for $($spPrincipals.Count) SP/MI principals (Graph API)"
+                $cutoff = [datetime]::UtcNow.AddDays(-$LookbackDays).ToString('yyyy-MM-ddTHH:mm:ssZ')
+                $spSignInsFetched = 0
+                foreach ($spId in $spPrincipals) {
+                    try {
+                        $spSignInParams = @{
+                            Uri      = '/auditLogs/signIns'
+                            Filter   = "servicePrincipalId eq '$spId' and createdDateTime ge $cutoff"
+                            Select   = @('servicePrincipalId', 'createdDateTime')
+                            MaxPages = 1
+                        }
+                        $spSignIns = Invoke-PAGraphRequest @spSignInParams
 
-                    if ($spSignIns) {
-                        foreach ($si in @($spSignIns)) {
-                            $spId = $si.servicePrincipalId
-                            if (-not $spId -or -not $principalMap.ContainsKey($spId)) {
-                                continue
-                            }
-                            $siDt = if ($si.createdDateTime) { [datetime]$si.createdDateTime } else { $null }
-
-                            if ($signInMap.ContainsKey($spId)) {
-                                $existing = $signInMap[$spId]
-                                $existing.SignInCount++
-                                if ($siDt -and (-not $existing.LastSignIn -or $siDt -gt $existing.LastSignIn)) {
-                                    $existing.LastSignIn = $siDt
+                        if ($spSignIns -and $spSignIns.Count -gt 0) {
+                            $latestDt = $null
+                            $count = 0
+                            foreach ($si in @($spSignIns)) {
+                                $count++
+                                $siDt = if ($si.createdDateTime) { [datetime]$si.createdDateTime } else { $null }
+                                if ($siDt -and (-not $latestDt -or $siDt -gt $latestDt)) {
+                                    $latestDt = $siDt
                                 }
                             }
-                            else {
-                                $signInMap[$spId] = @{
-                                    LastSignIn  = $siDt
-                                    SignInCount = 1
-                                }
+                            $signInMap[$spId] = @{
+                                LastSignIn  = $latestDt
+                                SignInCount = $count
                             }
+                            $spSignInsFetched++
                         }
                     }
-                    Write-Verbose "Get-PAActivitySignal: SP/MI sign-in data for $($spPrincipals.Count) principals"
+                    catch {
+                        $ex = $_
+                        Write-Verbose "Get-PAActivitySignal: sign-in query failed for SP '$spId' — $($ex.Exception.Message)"
+                    }
                 }
-                catch {
-                    $ex = $_
-                    $warnings.Add("SP sign-in query failed: $($ex.Exception.Message)")
-                    Write-Warning "Get-PAActivitySignal: SP/MI sign-in query failed — $($ex.Exception.Message). SP activity may be incomplete."
+                Write-Verbose "Get-PAActivitySignal: found sign-in data for $spSignInsFetched of $($spPrincipals.Count) SP/MI principals"
+                $spsMissing = $spPrincipals.Count - $spSignInsFetched
+                if ($spsMissing -gt 0) {
+                    $warnings.Add("$spsMissing SP/MI principals have no sign-in data in the last $LookbackDays days")
+                    Write-Warning "Get-PAActivitySignal: $spsMissing SPs have no sign-in data on Graph API path"
                 }
             }
 
