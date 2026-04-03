@@ -237,6 +237,15 @@ Describe 'Get-PAActivitySignal' {
                     }
                 )
             }
+            Mock Invoke-PAGraphRequest -ParameterFilter { $Uri -like '*/auditLogs/signIns*' } {
+                @(
+                    [PSCustomObject]@{
+                        servicePrincipalId = '<principal-sp>'
+                        createdDateTime    = '2026-03-28T08:00:00Z'
+                        appId              = '<app-id>'
+                    }
+                )
+            }
             Mock Invoke-PAGraphRequest -ParameterFilter { $Uri -like '*directoryAudits*' } {
                 @(
                     [PSCustomObject]@{
@@ -291,25 +300,46 @@ Describe 'Get-PAActivitySignal' {
         }
     }
 
-    Context 'Graph API SP limitation' {
+    Context 'Graph API SP sign-in coverage' {
 
-        It 'Warns about SP sign-in coverage' {
+        It 'Queries /auditLogs/signIns for SP sign-in data on Graph path' {
             Mock Invoke-PAGraphRequest -ParameterFilter { $Uri -like '*/users*' } { @() }
+            Mock Invoke-PAGraphRequest -ParameterFilter { $Uri -like '*/auditLogs/signIns*' } {
+                @([PSCustomObject]@{
+                    servicePrincipalId = '<principal-sp>'
+                    createdDateTime    = '2026-03-28T08:00:00Z'
+                    appId              = '<app-id>'
+                })
+            }
             Mock Invoke-PAGraphRequest -ParameterFilter { $Uri -like '*directoryAudits*' } { @() }
 
             $result = Get-PAActivitySignal -Session $mockSessionGraph -Assignments $mockAssignments
 
-            $result.Warnings | Where-Object { $_ -like '*service principals*no sign-in coverage*' } | Should -Not -BeNullOrEmpty
+            # SP has sign-in data (not Tier 1) but no role activity → Tier 2
+            $spProfile = $result.Items.Where({ $_.PrincipalId -eq '<principal-sp>' })
+            $spProfile[0].ActivityTier | Should -Be 2
+            $spProfile[0].DaysSinceLastSignIn | Should -Not -BeNull
         }
 
-        It 'SPs default to Tier 1 on Graph path' {
+        It 'SP with no sign-in data defaults to Tier 1' {
             Mock Invoke-PAGraphRequest -ParameterFilter { $Uri -like '*/users*' } { @() }
+            Mock Invoke-PAGraphRequest -ParameterFilter { $Uri -like '*/auditLogs/signIns*' } { @() }
             Mock Invoke-PAGraphRequest -ParameterFilter { $Uri -like '*directoryAudits*' } { @() }
 
             $result = Get-PAActivitySignal -Session $mockSessionGraph -Assignments $mockAssignments
 
-            $spProfile = $result.Items | Where-Object { $_.PrincipalId -eq '<principal-sp>' }
-            $spProfile.ActivityTier | Should -Be 1
+            $spProfile = $result.Items.Where({ $_.PrincipalId -eq '<principal-sp>' })
+            $spProfile[0].ActivityTier | Should -Be 1
+        }
+
+        It 'Warns when SP sign-in query fails' {
+            Mock Invoke-PAGraphRequest -ParameterFilter { $Uri -like '*/users*' } { @() }
+            Mock Invoke-PAGraphRequest -ParameterFilter { $Uri -like '*/auditLogs/signIns*' } { throw 'Forbidden' }
+            Mock Invoke-PAGraphRequest -ParameterFilter { $Uri -like '*directoryAudits*' } { @() }
+
+            $result = Get-PAActivitySignal -Session $mockSessionGraph -Assignments $mockAssignments
+
+            $result.Warnings.Where({ $_ -like '*SP sign-in query failed*' }).Count | Should -BeGreaterThan 0
         }
     }
 
@@ -365,6 +395,7 @@ Describe 'Get-PAActivitySignal' {
             Mock Invoke-PAGraphRequest -ParameterFilter { $Uri -like '*/users*' } {
                 throw 'Graph error'
             }
+            Mock Invoke-PAGraphRequest -ParameterFilter { $Uri -like '*/auditLogs/signIns*' } { @() }
             Mock Invoke-PAGraphRequest -ParameterFilter { $Uri -like '*directoryAudits*' } {
                 @()
             }
