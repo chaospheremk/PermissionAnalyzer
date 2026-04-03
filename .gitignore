@@ -10,6 +10,15 @@ coverage.xml
 # Invoke-Build output
 output/
 
+# Integration test output (local runs, not committed)
+integration-test-output/
+sample-report/
+
+# Node.js (Playwright screenshots)
+node_modules/
+package.json
+package-lock.json
+
 # Zensical build output
 site/
 
