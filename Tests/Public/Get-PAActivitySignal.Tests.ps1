@@ -302,13 +302,12 @@ Describe 'Get-PAActivitySignal' {
 
     Context 'Graph API SP sign-in coverage' {
 
-        It 'Queries /auditLogs/signIns for SP sign-in data on Graph path' {
+        It 'Queries per-SP sign-ins and captures sign-in data' {
             Mock Invoke-PAGraphRequest -ParameterFilter { $Uri -like '*/users*' } { @() }
             Mock Invoke-PAGraphRequest -ParameterFilter { $Uri -like '*/auditLogs/signIns*' } {
                 @([PSCustomObject]@{
                     servicePrincipalId = '<principal-sp>'
                     createdDateTime    = '2026-03-28T08:00:00Z'
-                    appId              = '<app-id>'
                 })
             }
             Mock Invoke-PAGraphRequest -ParameterFilter { $Uri -like '*directoryAudits*' } { @() }
@@ -332,14 +331,14 @@ Describe 'Get-PAActivitySignal' {
             $spProfile[0].ActivityTier | Should -Be 1
         }
 
-        It 'Warns when SP sign-in query fails' {
+        It 'Warns when SPs have no sign-in data' {
             Mock Invoke-PAGraphRequest -ParameterFilter { $Uri -like '*/users*' } { @() }
-            Mock Invoke-PAGraphRequest -ParameterFilter { $Uri -like '*/auditLogs/signIns*' } { throw 'Forbidden' }
+            Mock Invoke-PAGraphRequest -ParameterFilter { $Uri -like '*/auditLogs/signIns*' } { @() }
             Mock Invoke-PAGraphRequest -ParameterFilter { $Uri -like '*directoryAudits*' } { @() }
 
             $result = Get-PAActivitySignal -Session $mockSessionGraph -Assignments $mockAssignments
 
-            $result.Warnings.Where({ $_ -like '*SP sign-in query failed*' }).Count | Should -BeGreaterThan 0
+            $result.Warnings.Where({ $_ -like '*SP/MI principals have no sign-in*' }).Count | Should -BeGreaterThan 0
         }
     }
 

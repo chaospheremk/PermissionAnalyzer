@@ -210,16 +210,10 @@ function Export-PAReport {
                         [void]$sb.AppendLine('        .summary-grid { display: flex; gap: 2em; flex-wrap: wrap; margin-bottom: 1em; }')
                         [void]$sb.AppendLine('        .summary-grid table { width: auto; min-width: 220px; }')
                         [void]$sb.AppendLine('        .summary-grid td.count { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }')
-                        [void]$sb.AppendLine('        .findings-table { width: 100%; table-layout: fixed; }')
-                        [void]$sb.AppendLine('        .findings-table th:nth-child(1) { width: 7%; }')
-                        [void]$sb.AppendLine('        .findings-table th:nth-child(2) { width: 11%; }')
-                        [void]$sb.AppendLine('        .findings-table th:nth-child(3) { width: 22%; }')
-                        [void]$sb.AppendLine('        .findings-table th:nth-child(4) { width: 12%; }')
-                        [void]$sb.AppendLine('        .findings-table th:nth-child(5) { width: 10%; }')
-                        [void]$sb.AppendLine('        .findings-table th:nth-child(6) { width: 14%; }')
-                        [void]$sb.AppendLine('        .findings-table th:nth-child(7) { width: 16%; }')
-                        [void]$sb.AppendLine('        .findings-table th:nth-child(8) { width: 8%; }')
-                        [void]$sb.AppendLine('        .findings-table td { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }')
+                        [void]$sb.AppendLine('        .table-scroll { overflow-x: auto; margin-bottom: 2em; }')
+                        [void]$sb.AppendLine('        .findings-table { min-width: 1200px; width: max-content; }')
+                        [void]$sb.AppendLine('        .findings-table th { min-width: 80px; }')
+                        [void]$sb.AppendLine('        .findings-table td { white-space: nowrap; }')
                         [void]$sb.AppendLine('        .findings-table th { position: relative; user-select: none; }')
                         [void]$sb.AppendLine('        .findings-table th .resizer { position: absolute; right: 0; top: 0; width: 5px; height: 100%; cursor: col-resize; }')
                         [void]$sb.AppendLine('        .findings-table th .resizer:hover { background: var(--text-faint); }')
@@ -266,6 +260,7 @@ function Export-PAReport {
 
                         # Findings table — sorted by severity, human-friendly labels
                         [void]$sb.AppendLine('    <h2>Findings</h2>')
+                        [void]$sb.AppendLine('    <div class="table-scroll">')
                         [void]$sb.AppendLine('    <table class="findings-table">')
                         [void]$sb.AppendLine('        <thead><tr><th>Severity<div class="resizer"></div></th><th>Category<div class="resizer"></div></th><th>Title<div class="resizer"></div></th><th>Principal<div class="resizer"></div></th><th>Role<div class="resizer"></div></th><th>Scope<div class="resizer"></div></th><th>Recommendation<div class="resizer"></div></th><th>Remediation</th></tr></thead>')
                         [void]$sb.AppendLine('        <tbody>')
@@ -288,6 +283,7 @@ function Export-PAReport {
 
                         [void]$sb.AppendLine('        </tbody>')
                         [void]$sb.AppendLine('    </table>')
+                        [void]$sb.AppendLine('    </div>')
 
                         # Footer with summary
                         $critCount = $severityCounts['Critical']
