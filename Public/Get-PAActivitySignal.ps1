@@ -295,53 +295,19 @@ AzureActivity
                 Write-Warning "Get-PAActivitySignal: user signInActivity query failed — $($ex.Exception.Message)"
             }
 
-            # SP/MI sign-ins via per-principal /auditLogs/signIns queries
+            # SP/MI sign-in limitation — Graph API v1.0 does not expose service
+            # principal sign-in data via /auditLogs/signIns (servicePrincipalId
+            # is not a queryable property). SP sign-in data is only available via
+            # Log Analytics (AADServicePrincipalSignInLogs table). On the Graph
+            # API path, SP/MI principals will default to Tier 1 (no sign-in) which
+            # may produce false positives for active service principals.
             $spPrincipals = $principalIds.Where({
                 $principalMap[$_].PrincipalType -eq 'ServicePrincipal' -or
                 $principalMap[$_].PrincipalType -eq 'ManagedIdentity'
             })
             if ($spPrincipals.Count -gt 0) {
-                Write-Verbose "Get-PAActivitySignal: fetching sign-ins for $($spPrincipals.Count) SP/MI principals (Graph API)"
-                $cutoff = [datetime]::UtcNow.AddDays(-$LookbackDays).ToString('yyyy-MM-ddTHH:mm:ssZ')
-                $spSignInsFetched = 0
-                foreach ($spId in $spPrincipals) {
-                    try {
-                        $spSignInParams = @{
-                            Uri      = '/auditLogs/signIns'
-                            Filter   = "servicePrincipalId eq '$spId' and createdDateTime ge $cutoff"
-                            Select   = @('servicePrincipalId', 'createdDateTime')
-                            MaxPages = 1
-                        }
-                        $spSignIns = Invoke-PAGraphRequest @spSignInParams
-
-                        if ($spSignIns -and $spSignIns.Count -gt 0) {
-                            $latestDt = $null
-                            $count = 0
-                            foreach ($si in @($spSignIns)) {
-                                $count++
-                                $siDt = if ($si.createdDateTime) { [datetime]$si.createdDateTime } else { $null }
-                                if ($siDt -and (-not $latestDt -or $siDt -gt $latestDt)) {
-                                    $latestDt = $siDt
-                                }
-                            }
-                            $signInMap[$spId] = @{
-                                LastSignIn  = $latestDt
-                                SignInCount = $count
-                            }
-                            $spSignInsFetched++
-                        }
-                    }
-                    catch {
-                        $ex = $_
-                        Write-Verbose "Get-PAActivitySignal: sign-in query failed for SP '$spId' — $($ex.Exception.Message)"
-                    }
-                }
-                Write-Verbose "Get-PAActivitySignal: found sign-in data for $spSignInsFetched of $($spPrincipals.Count) SP/MI principals"
-                $spsMissing = $spPrincipals.Count - $spSignInsFetched
-                if ($spsMissing -gt 0) {
-                    $warnings.Add("$spsMissing SP/MI principals have no sign-in data in the last $LookbackDays days")
-                    Write-Warning "Get-PAActivitySignal: $spsMissing SPs have no sign-in data on Graph API path"
-                }
+                $warnings.Add("Graph API path: $($spPrincipals.Count) SP/MI principals have no sign-in coverage. SP sign-in data requires Log Analytics (AADServicePrincipalSignInLogs). Use -WorkspaceId for accurate SP activity.")
+                Write-Warning "Get-PAActivitySignal: $($spPrincipals.Count) SPs have no sign-in data on Graph API path — use -WorkspaceId for SP coverage"
             }
 
             # Directory audit logs for role activity
