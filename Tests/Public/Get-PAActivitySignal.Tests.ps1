@@ -237,15 +237,6 @@ Describe 'Get-PAActivitySignal' {
                     }
                 )
             }
-            Mock Invoke-PAGraphRequest -ParameterFilter { $Uri -like '*/auditLogs/signIns*' } {
-                @(
-                    [PSCustomObject]@{
-                        servicePrincipalId = '<principal-sp>'
-                        createdDateTime    = '2026-03-28T08:00:00Z'
-                        appId              = '<app-id>'
-                    }
-                )
-            }
             Mock Invoke-PAGraphRequest -ParameterFilter { $Uri -like '*directoryAudits*' } {
                 @(
                     [PSCustomObject]@{
@@ -300,29 +291,10 @@ Describe 'Get-PAActivitySignal' {
         }
     }
 
-    Context 'Graph API SP sign-in coverage' {
+    Context 'Graph API SP sign-in limitation' {
 
-        It 'Queries per-SP sign-ins and captures sign-in data' {
+        It 'SPs default to Tier 1 on Graph API path (no SP sign-in coverage)' {
             Mock Invoke-PAGraphRequest -ParameterFilter { $Uri -like '*/users*' } { @() }
-            Mock Invoke-PAGraphRequest -ParameterFilter { $Uri -like '*/auditLogs/signIns*' } {
-                @([PSCustomObject]@{
-                    servicePrincipalId = '<principal-sp>'
-                    createdDateTime    = '2026-03-28T08:00:00Z'
-                })
-            }
-            Mock Invoke-PAGraphRequest -ParameterFilter { $Uri -like '*directoryAudits*' } { @() }
-
-            $result = Get-PAActivitySignal -Session $mockSessionGraph -Assignments $mockAssignments
-
-            # SP has sign-in data (not Tier 1) but no role activity → Tier 2
-            $spProfile = $result.Items.Where({ $_.PrincipalId -eq '<principal-sp>' })
-            $spProfile[0].ActivityTier | Should -Be 2
-            $spProfile[0].DaysSinceLastSignIn | Should -Not -BeNull
-        }
-
-        It 'SP with no sign-in data defaults to Tier 1' {
-            Mock Invoke-PAGraphRequest -ParameterFilter { $Uri -like '*/users*' } { @() }
-            Mock Invoke-PAGraphRequest -ParameterFilter { $Uri -like '*/auditLogs/signIns*' } { @() }
             Mock Invoke-PAGraphRequest -ParameterFilter { $Uri -like '*directoryAudits*' } { @() }
 
             $result = Get-PAActivitySignal -Session $mockSessionGraph -Assignments $mockAssignments
@@ -331,14 +303,22 @@ Describe 'Get-PAActivitySignal' {
             $spProfile[0].ActivityTier | Should -Be 1
         }
 
-        It 'Warns when SPs have no sign-in data' {
+        It 'Warns about SP sign-in coverage limitation and recommends -WorkspaceId' {
             Mock Invoke-PAGraphRequest -ParameterFilter { $Uri -like '*/users*' } { @() }
-            Mock Invoke-PAGraphRequest -ParameterFilter { $Uri -like '*/auditLogs/signIns*' } { @() }
             Mock Invoke-PAGraphRequest -ParameterFilter { $Uri -like '*directoryAudits*' } { @() }
 
             $result = Get-PAActivitySignal -Session $mockSessionGraph -Assignments $mockAssignments
 
-            $result.Warnings.Where({ $_ -like '*SP/MI principals have no sign-in*' }).Count | Should -BeGreaterThan 0
+            $result.Warnings.Where({ $_ -like '*SP/MI principals have no sign-in coverage*' }).Count | Should -BeGreaterThan 0
+        }
+
+        It 'Warning mentions Log Analytics as the solution' {
+            Mock Invoke-PAGraphRequest -ParameterFilter { $Uri -like '*/users*' } { @() }
+            Mock Invoke-PAGraphRequest -ParameterFilter { $Uri -like '*directoryAudits*' } { @() }
+
+            $result = Get-PAActivitySignal -Session $mockSessionGraph -Assignments $mockAssignments
+
+            $result.Warnings.Where({ $_ -like '*Log Analytics*WorkspaceId*' }).Count | Should -BeGreaterThan 0
         }
     }
 
@@ -394,7 +374,6 @@ Describe 'Get-PAActivitySignal' {
             Mock Invoke-PAGraphRequest -ParameterFilter { $Uri -like '*/users*' } {
                 throw 'Graph error'
             }
-            Mock Invoke-PAGraphRequest -ParameterFilter { $Uri -like '*/auditLogs/signIns*' } { @() }
             Mock Invoke-PAGraphRequest -ParameterFilter { $Uri -like '*directoryAudits*' } {
                 @()
             }
