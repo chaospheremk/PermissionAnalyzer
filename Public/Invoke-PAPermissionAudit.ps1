@@ -1,4 +1,4 @@
-#Requires -Version 7.0
+﻿#Requires -Version 7.0
 
 function Invoke-PAPermissionAudit {
     <#
@@ -190,6 +190,23 @@ function Invoke-PAPermissionAudit {
         }
 
         # ================================================================
+        # Stage 2.5 — Resolve role definition actions (for Tier 3)
+        # ================================================================
+
+        Write-Verbose 'Invoke-PAPermissionAudit: Stage 2.5 — resolving role definition actions'
+        $roleActionMap = @{}
+        try {
+            $roleActionMap = Resolve-PARoleAction -Assignments $allAssignments -Session $session
+            Write-Verbose "Invoke-PAPermissionAudit: resolved $($roleActionMap.Count) role definitions to action lists"
+        }
+        catch {
+            $ex = $_
+            $msg = "Role action resolution failed: $($ex.Exception.Message)"
+            $allWarnings.Add($msg)
+            Write-Warning "Invoke-PAPermissionAudit: $msg — Tier 3 analysis may be limited"
+        }
+
+        # ================================================================
         # Stage 3 — Activity signals
         # ================================================================
 
@@ -199,9 +216,10 @@ function Invoke-PAPermissionAudit {
 
         try {
             $activityParams = @{
-                Session      = $session
-                Assignments  = $allAssignments
-                LookbackDays = $LookbackDays
+                Session       = $session
+                Assignments   = $allAssignments
+                LookbackDays  = $LookbackDays
+                RoleActionMap = $roleActionMap
             }
             $activityResult = Get-PAActivitySignal @activityParams
             $activityProfiles = @($activityResult.Items)
@@ -243,6 +261,7 @@ function Invoke-PAPermissionAudit {
                 Assignments      = $allAssignments
                 ActivityProfiles = $activityProfiles
                 GapThreshold     = $GapThreshold
+                RoleActionMap    = $roleActionMap
             }
             $leastPrivResult = Find-PALeastPrivilegeGap @leastPrivParams
             Write-Verbose "Invoke-PAPermissionAudit: Find-PALeastPrivilegeGap — $($leastPrivResult.Status), $($leastPrivResult.ItemCount) findings"
