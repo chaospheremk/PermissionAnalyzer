@@ -21,7 +21,7 @@ Identifies over-privileged access by comparing granted vs used permissions.
 
 ```
 Find-PALeastPrivilegeGap [-Assignments] <psobject[]> [-ActivityProfiles] <psobject[]>
- [[-GapThreshold] <double>] [<CommonParameters>]
+ [[-RoleActionMap] <hashtable>] [[-GapThreshold] <double>] [<CommonParameters>]
 ```
 
 ## ALIASES
@@ -109,6 +109,33 @@ Defaults to 0.5.
 ```yaml
 Type: System.Double
 DefaultValue: 0.5
+SupportsWildcards: false
+Aliases: []
+ParameterSets:
+- Name: (All)
+  Position: 3
+  IsRequired: false
+  ValueFromPipeline: false
+  ValueFromPipelineByPropertyName: false
+  ValueFromRemainingArguments: false
+DontShow: false
+AcceptedValues: []
+HelpMessage: ''
+```
+
+### -RoleActionMap
+
+Hashtable mapping RoleDefinitionId to string arrays of granted
+actions, as returned by Resolve-PARoleAction.
+When supplied, the
+analyzer uses per-assignment granted actions from the map instead
+of the per-principal GrantedActions from the activity profile.
+This
+gives accurate per-role gap analysis.
+
+```yaml
+Type: System.Collections.Hashtable
+DefaultValue: ''
 SupportsWildcards: false
 Aliases: []
 ParameterSets:

@@ -20,8 +20,8 @@ Collects activity signals per principal from Log Analytics or Graph API.
 ### __AllParameterSets
 
 ```
-Get-PAActivitySignal [-Session] <psobject> [-Assignments] <psobject[]> [[-LookbackDays] <int>]
- [<CommonParameters>]
+Get-PAActivitySignal [-Session] <psobject> [-Assignments] <psobject[]>
+ [[-RoleActionMap] <hashtable>] [[-LookbackDays] <int>] [<CommonParameters>]
 ```
 
 ## ALIASES
@@ -45,6 +45,11 @@ Two data paths are supported:
 Limited to 30-day lookback for audit
   data.
 No SP sign-in coverage in v1.0.
+
+When a RoleActionMap is supplied, the function also collects used
+action data from AuditLogs and AzureActivity (Log Analytics) or
+directoryAudits (Graph API), and computes per-principal GrantedActions
+and UsedActions for Tier 3 gap analysis by Find-PALeastPrivilegeGap.
 
 Activity tiers: 0 = Active (sign-in + role activity), 1 = NoSignIn,
 2 = NoRoleActivity.
@@ -112,6 +117,32 @@ Capped at 30 for Graph API path (directoryAudits limitation).
 ```yaml
 Type: System.Int32
 DefaultValue: 90
+SupportsWildcards: false
+Aliases: []
+ParameterSets:
+- Name: (All)
+  Position: 3
+  IsRequired: false
+  ValueFromPipeline: false
+  ValueFromPipelineByPropertyName: false
+  ValueFromRemainingArguments: false
+DontShow: false
+AcceptedValues: []
+HelpMessage: ''
+```
+
+### -RoleActionMap
+
+Hashtable mapping RoleDefinitionId to string arrays of granted
+actions, as returned by Resolve-PARoleAction.
+When supplied, the
+function collects UsedActions from audit logs and computes
+per-principal GrantedActions on the returned activity profiles.
+When omitted, GrantedActions and UsedActions remain empty arrays.
+
+```yaml
+Type: System.Collections.Hashtable
+DefaultValue: ''
 SupportsWildcards: false
 Aliases: []
 ParameterSets:
