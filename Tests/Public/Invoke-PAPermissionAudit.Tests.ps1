@@ -1,4 +1,4 @@
-#Requires -Version 7.0
+﻿#Requires -Version 7.0
 #Requires -Modules Pester
 
 BeforeAll {
@@ -11,9 +11,10 @@ BeforeAll {
     function Get-PAPimEligibility           { param($Session) }
     function Get-PAAzureRbacAssignment      { param($Session) }
     function Get-PAAppPermission            { param($Session) }
-    function Get-PAActivitySignal           { param($Session, $Assignments, $LookbackDays) }
+    function Resolve-PARoleAction            { param($Assignments, $Session) }
+    function Get-PAActivitySignal           { param($Session, $Assignments, $LookbackDays, $RoleActionMap) }
     function Find-PAUnusedAssignment        { param($Assignments, $ActivityProfiles, $InactivityThresholdDays) }
-    function Find-PALeastPrivilegeGap       { param($Assignments, $ActivityProfiles, $GapThreshold) }
+    function Find-PALeastPrivilegeGap       { param($Assignments, $ActivityProfiles, $GapThreshold, $RoleActionMap) }
     function Find-PAGroupConsolidation      { param($Assignments, $MinimumGroupSize) }
     function Export-PAReport                { param($Findings, $OutputDirectory, $Format, $RunId) }
     function New-PARemediationScript        { param($Findings, $OutputDirectory, $RunId) }
@@ -66,6 +67,8 @@ Describe 'Invoke-PAPermissionAudit' {
     BeforeAll {
         # Default mocks — all stages succeed; callers override per-context where needed.
         Mock Connect-PASession { New-MockSession }
+
+        Mock Resolve-PARoleAction { @{} }
 
         Mock Get-PAEntraRoleAssignment {
             New-MockCollectorResult -Collector 'Get-PAEntraRoleAssignment' -Items @(
@@ -461,6 +464,45 @@ Describe 'Invoke-PAPermissionAudit' {
         It 'TotalAssignments is the sum of all collector ItemCounts' {
             # Default collector mocks each return 1 item — 4 collectors × 1 = 4
             $result.TotalAssignments | Should -Be 4
+        }
+    }
+
+    # =========================================================================
+    Context 'Tier 3 — role action resolution wiring' {
+
+        It 'Calls Resolve-PARoleAction after collecting assignments' {
+            Invoke-PAPermissionAudit @defaultParams
+
+            Should -Invoke Resolve-PARoleAction -Exactly -Times 1
+        }
+
+        It 'Passes RoleActionMap to Get-PAActivitySignal' {
+            Mock Resolve-PARoleAction { @{ '<role-def-id>' = @('some/action') } }
+
+            Invoke-PAPermissionAudit @defaultParams
+
+            Should -Invoke Get-PAActivitySignal -ParameterFilter {
+                $null -ne $RoleActionMap -and $RoleActionMap.ContainsKey('<role-def-id>')
+            }
+        }
+
+        It 'Passes RoleActionMap to Find-PALeastPrivilegeGap' {
+            Mock Resolve-PARoleAction { @{ '<role-def-id>' = @('some/action') } }
+
+            Invoke-PAPermissionAudit @defaultParams
+
+            Should -Invoke Find-PALeastPrivilegeGap -ParameterFilter {
+                $null -ne $RoleActionMap -and $RoleActionMap.ContainsKey('<role-def-id>')
+            }
+        }
+
+        It 'Continues with empty map when Resolve-PARoleAction throws' {
+            Mock Resolve-PARoleAction { throw 'Graph API timeout' }
+
+            $result = Invoke-PAPermissionAudit @defaultParams
+
+            $result | Should -Not -BeNullOrEmpty
+            $result.Warnings | Where-Object { $_ -like '*Role action resolution failed*' } | Should -Not -BeNullOrEmpty
         }
     }
 }

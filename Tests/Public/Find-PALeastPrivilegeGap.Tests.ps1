@@ -1,4 +1,4 @@
-#Requires -Version 7.0
+﻿#Requires -Version 7.0
 #Requires -Modules Pester
 
 BeforeAll {
@@ -702,6 +702,95 @@ Describe 'Find-PALeastPrivilegeGap' {
             $result2 = Find-PALeastPrivilegeGap -Assignments @($assignment) -ActivityProfiles @($profile)
 
             $result1.Items[0].FindingId | Should -Be $result2.Items[0].FindingId
+        }
+    }
+
+    # -------------------------------------------------------------------------
+    Context 'RoleActionMap — per-assignment granted actions' {
+
+        It 'Uses per-assignment actions from RoleActionMap instead of profile GrantedActions' {
+            # Profile has empty GrantedActions but RoleActionMap has actions for the role
+            $assignment = New-MockAssignment `
+                -RoleDefinitionId '<role-def-vm-contrib>' `
+                -RoleName 'Virtual Machine Contributor'
+            $profile = New-MockProfile `
+                -GrantedActions @() `
+                -UsedActions @('Microsoft.Compute/virtualMachines/write')
+
+            $roleActionMap = @{
+                '<role-def-vm-contrib>' = @(
+                    'Microsoft.Compute/virtualMachines/read',
+                    'Microsoft.Compute/virtualMachines/write',
+                    'Microsoft.Network/networkInterfaces/read',
+                    'Microsoft.Storage/storageAccounts/read'
+                )
+            }
+
+            $gapParams = @{
+                Assignments      = @($assignment)
+                ActivityProfiles = @($profile)
+                RoleActionMap    = $roleActionMap
+            }
+            $result = Find-PALeastPrivilegeGap @gapParams
+
+            $result.Items | Should -HaveCount 1
+            $result.Items[0].Details.GrantedNamespaces | Should -HaveCount 3
+            $result.Items[0].Details.UsedNamespaces | Should -HaveCount 1
+        }
+
+        It 'Falls back to profile GrantedActions when RoleActionMap has no entry for the role' {
+            $assignment = New-MockAssignment `
+                -RoleDefinitionId '<role-def-unknown>'
+            $profile = $highGapProfile
+
+            $roleActionMap = @{
+                '<some-other-role>' = @('some/action/path')
+            }
+
+            $gapParams = @{
+                Assignments      = @($assignment)
+                ActivityProfiles = @($profile)
+                RoleActionMap    = $roleActionMap
+            }
+            $result = Find-PALeastPrivilegeGap @gapParams
+
+            # Falls back to profile's GrantedActions which has 4 namespaces
+            $result.Items | Should -HaveCount 1
+            $result.Items[0].Details.GrantedNamespaces | Should -HaveCount 4
+        }
+
+        It 'Falls back to profile GrantedActions when RoleActionMap is not provided' {
+            $assignment = New-MockAssignment
+            $profile = $highGapProfile
+
+            $result = Find-PALeastPrivilegeGap -Assignments @($assignment) -ActivityProfiles @($profile)
+
+            # Same behavior as always — uses profile GrantedActions
+            $result.Items | Should -HaveCount 1
+            $result.Items[0].Details.GrantedNamespaces | Should -HaveCount 4
+        }
+
+        It 'Skips assignment when RoleActionMap entry is empty (wildcard-only role)' {
+            $assignment = New-MockAssignment `
+                -RoleDefinitionId '<role-def-owner>' `
+                -RoleName 'Owner'
+            # Profile has empty actions (no profile-level fallback either)
+            $profile = New-MockProfile `
+                -GrantedActions @() `
+                -UsedActions @('Microsoft.Compute/virtualMachines/write')
+
+            $roleActionMap = @{
+                '<role-def-owner>' = @()  # Owner — all wildcards filtered
+            }
+
+            $gapParams = @{
+                Assignments      = @($assignment)
+                ActivityProfiles = @($profile)
+                RoleActionMap    = $roleActionMap
+            }
+            $result = Find-PALeastPrivilegeGap @gapParams
+
+            $result.Items | Should -HaveCount 0
         }
     }
 }

@@ -1,4 +1,4 @@
-#Requires -Version 7.0
+﻿#Requires -Version 7.0
 
 function Find-PALeastPrivilegeGap {
     <#
@@ -17,6 +17,12 @@ function Find-PALeastPrivilegeGap {
         Array of PA.Assignment objects from collectors.
     .PARAMETER ActivityProfiles
         Array of PA.ActivityProfile objects from Get-PAActivitySignal.
+    .PARAMETER RoleActionMap
+        Hashtable mapping RoleDefinitionId to string arrays of granted
+        actions, as returned by Resolve-PARoleAction. When supplied, the
+        analyzer uses per-assignment granted actions from the map instead
+        of the per-principal GrantedActions from the activity profile. This
+        gives accurate per-role gap analysis.
     .PARAMETER GapThreshold
         Minimum gap ratio (0.0–1.0) to generate a finding. A value of 0.5 means
         the principal must be using less than 50% of their granted namespaces.
@@ -48,6 +54,9 @@ function Find-PALeastPrivilegeGap {
         [Parameter(Mandatory)]
         [AllowEmptyCollection()]
         [PSCustomObject[]]$ActivityProfiles,
+
+        [Parameter()]
+        [hashtable]$RoleActionMap,
 
         [Parameter()]
         [ValidateRange(0.0, 1.0)]
@@ -136,8 +145,16 @@ function Find-PALeastPrivilegeGap {
                     continue
                 }
 
+                # Resolve granted actions: per-assignment from RoleActionMap, or per-principal fallback
+                $roleGrantedActions = if ($RoleActionMap -and $RoleActionMap.ContainsKey($assignment.RoleDefinitionId)) {
+                    $RoleActionMap[$assignment.RoleDefinitionId]
+                }
+                else {
+                    $actProfile.GrantedActions
+                }
+
                 # Skip if no granted actions to compare against
-                if ($actProfile.GrantedActions.Count -eq 0) {
+                if ($roleGrantedActions.Count -eq 0) {
                     continue
                 }
 
@@ -145,7 +162,7 @@ function Find-PALeastPrivilegeGap {
                 $grantedNamespaces = [System.Collections.Generic.HashSet[string]]::new(
                     [System.StringComparer]::OrdinalIgnoreCase
                 )
-                foreach ($action in $actProfile.GrantedActions) {
+                foreach ($action in $roleGrantedActions) {
                     $segments = $action -split '/'
                     if ($segments.Count -ge 2) {
                         [void]$grantedNamespaces.Add("$($segments[0])/$($segments[1])")
