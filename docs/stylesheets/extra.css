@@ -1,0 +1,12 @@
+/* Typography refinements for dense technical content */
+.md-typeset {
+  line-height: 1.7;
+}
+
+.md-typeset h2 {
+  margin-top: 1.8em;
+}
+
+.md-typeset h3 {
+  margin-top: 1.4em;
+}
