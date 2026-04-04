@@ -1,4 +1,4 @@
-#Requires -Version 7.0
+﻿#Requires -Version 7.0
 #Requires -Modules Pester
 
 BeforeAll {
@@ -7,6 +7,10 @@ BeforeAll {
     . (Join-Path $PSScriptRoot '../../Private/Invoke-PALogAnalyticsQuery.ps1')
     . (Join-Path $PSScriptRoot '../../Private/New-PAActivityProfile.ps1')
     . (Join-Path $PSScriptRoot '../../Private/New-PACollectorResult.ps1')
+    . (Join-Path $PSScriptRoot '../../Private/Resolve-PAOperationNamespace.ps1')
+
+    # Reset the Resolve-PAOperationNamespace cache so it loads the real map
+    $script:PAOperationMap = $null
 
     # Stubs for external cmdlets
     function Invoke-MgGraphRequest { param($Method, $Uri, $Headers, $OutputType) }
@@ -413,6 +417,324 @@ Describe 'Get-PAActivitySignal' {
 
             $userProfile = $result.Items | Where-Object { $_.PrincipalId -eq '<principal-user>' }
             $userProfile.SignInCount | Should -Be 15
+        }
+    }
+
+    Context 'Tier 3 — GrantedActions from RoleActionMap (Log Analytics)' {
+
+        BeforeAll {
+            $mockRoleActionMap = @{
+                '<entra-role-def-1>' = @(
+                    'microsoft.directory/users/basic/update',
+                    'microsoft.directory/users/password/update'
+                )
+                '<rbac-role-def-1>'  = @(
+                    'Microsoft.Compute/virtualMachines/read',
+                    'Microsoft.Compute/virtualMachines/write'
+                )
+            }
+
+            $mockAssignmentsWithRoles = @(
+                [PSCustomObject]@{
+                    PSTypeName           = 'PA.Assignment'
+                    PrincipalId          = '<principal-user>'
+                    PrincipalDisplayName = 'Alice Admin'
+                    PrincipalType        = 'User'
+                    RoleDefinitionId     = '<entra-role-def-1>'
+                    Source               = 'EntraRole'
+                },
+                [PSCustomObject]@{
+                    PSTypeName           = 'PA.Assignment'
+                    PrincipalId          = '<principal-user>'
+                    PrincipalDisplayName = 'Alice Admin'
+                    PrincipalType        = 'User'
+                    RoleDefinitionId     = '<rbac-role-def-1>'
+                    Source               = 'AzureRbac'
+                }
+            )
+        }
+
+        BeforeEach {
+            Mock Invoke-PALogAnalyticsQuery -ParameterFilter { $Query -like '*SigninLogs*' } {
+                @([PSCustomObject]@{
+                    PrincipalId = '<principal-user>'
+                    LastSignIn  = '2026-03-25T10:00:00Z'
+                    SignInCount = '5'
+                })
+            }
+            Mock Invoke-PALogAnalyticsQuery -ParameterFilter { $Query -like '*AuditLogs*' -and $Query -notlike '*OperationName*' } {
+                @([PSCustomObject]@{
+                    PrincipalId   = '<principal-user>'
+                    LastActivity  = '2026-03-20T14:00:00Z'
+                    ActivityCount = '3'
+                })
+            }
+            Mock Invoke-PALogAnalyticsQuery -ParameterFilter { $Query -like '*AzureActivity*' -and $Query -notlike '*OperationNameValue*' } {
+                @()
+            }
+            # Query D: Entra used actions
+            Mock Invoke-PALogAnalyticsQuery -ParameterFilter { $Query -like '*AuditLogs*' -and $Query -like '*OperationName*' } {
+                @()
+            }
+            # Query E: Azure RBAC used actions
+            Mock Invoke-PALogAnalyticsQuery -ParameterFilter { $Query -like '*AzureActivity*' -and $Query -like '*OperationNameValue*' } {
+                @()
+            }
+        }
+
+        It 'Populates GrantedActions as union of all role actions for the principal' {
+            $signalParams = @{
+                Session      = $mockSessionLA
+                Assignments  = $mockAssignmentsWithRoles
+                RoleActionMap = $mockRoleActionMap
+            }
+            $result = Get-PAActivitySignal @signalParams
+
+            $profile = $result.Items | Where-Object { $_.PrincipalId -eq '<principal-user>' }
+            $profile.GrantedActions | Should -HaveCount 4
+            $profile.GrantedActions | Should -Contain 'microsoft.directory/users/basic/update'
+            $profile.GrantedActions | Should -Contain 'Microsoft.Compute/virtualMachines/read'
+        }
+
+        It 'Leaves GrantedActions empty when RoleActionMap is not provided' {
+            $result = Get-PAActivitySignal -Session $mockSessionLA -Assignments $mockAssignmentsWithRoles
+
+            $profile = $result.Items | Where-Object { $_.PrincipalId -eq '<principal-user>' }
+            $profile.GrantedActions | Should -HaveCount 0
+        }
+
+        It 'Leaves GrantedActions empty when RoleActionMap has no matching role IDs' {
+            $emptyMap = @{ '<unknown-role>' = @('some/action') }
+            $signalParams = @{
+                Session       = $mockSessionLA
+                Assignments   = $mockAssignmentsWithRoles
+                RoleActionMap = $emptyMap
+            }
+            $result = Get-PAActivitySignal @signalParams
+
+            $profile = $result.Items | Where-Object { $_.PrincipalId -eq '<principal-user>' }
+            $profile.GrantedActions | Should -HaveCount 0
+        }
+    }
+
+    Context 'Tier 3 — UsedActions from Log Analytics' {
+
+        BeforeAll {
+            $mockRoleActionMap = @{
+                '<entra-role-def-1>' = @('microsoft.directory/users/basic/update')
+            }
+
+            $tier3Assignment = @(
+                [PSCustomObject]@{
+                    PSTypeName           = 'PA.Assignment'
+                    PrincipalId          = '<principal-user>'
+                    PrincipalDisplayName = 'Alice Admin'
+                    PrincipalType        = 'User'
+                    RoleDefinitionId     = '<entra-role-def-1>'
+                    Source               = 'EntraRole'
+                }
+            )
+        }
+
+        It 'Populates UsedActions from Entra AuditLogs via Resolve-PAOperationNamespace' {
+            Mock Invoke-PALogAnalyticsQuery -ParameterFilter { $Query -like '*SigninLogs*' } {
+                @([PSCustomObject]@{
+                    PrincipalId = '<principal-user>'
+                    LastSignIn  = '2026-03-25T10:00:00Z'
+                    SignInCount = '5'
+                })
+            }
+            Mock Invoke-PALogAnalyticsQuery -ParameterFilter { $Query -like '*AuditLogs*' -and $Query -notlike '*OperationName*' } {
+                @([PSCustomObject]@{
+                    PrincipalId   = '<principal-user>'
+                    LastActivity  = '2026-03-20T14:00:00Z'
+                    ActivityCount = '2'
+                })
+            }
+            Mock Invoke-PALogAnalyticsQuery -ParameterFilter { $Query -like '*AzureActivity*' -and $Query -notlike '*OperationNameValue*' } {
+                @()
+            }
+            # Query D: Entra used actions — returns operation name + category
+            Mock Invoke-PALogAnalyticsQuery -ParameterFilter { $Query -like '*AuditLogs*' -and $Query -like '*OperationName*' } {
+                @(
+                    [PSCustomObject]@{
+                        PrincipalId   = '<principal-user>'
+                        OperationName = 'Add user'
+                        Category      = 'UserManagement'
+                    },
+                    [PSCustomObject]@{
+                        PrincipalId   = '<principal-user>'
+                        OperationName = 'Update user'
+                        Category      = 'UserManagement'
+                    }
+                )
+            }
+            # Query E: Azure RBAC used actions
+            Mock Invoke-PALogAnalyticsQuery -ParameterFilter { $Query -like '*AzureActivity*' -and $Query -like '*OperationNameValue*' } {
+                @()
+            }
+
+            $signalParams = @{
+                Session       = $mockSessionLA
+                Assignments   = $tier3Assignment
+                RoleActionMap = $mockRoleActionMap
+            }
+            $result = Get-PAActivitySignal @signalParams
+
+            $profile = $result.Items | Where-Object { $_.PrincipalId -eq '<principal-user>' }
+            $profile.UsedActions | Should -Not -BeNullOrEmpty
+            # 'Add user' maps to microsoft.directory/users/create
+            # 'Update user' maps to microsoft.directory/users/basic/update
+            $profile.UsedActions | Should -Contain 'microsoft.directory/users/create'
+            $profile.UsedActions | Should -Contain 'microsoft.directory/users/basic/update'
+        }
+
+        It 'Populates UsedActions from AzureActivity OperationNameValue' {
+            Mock Invoke-PALogAnalyticsQuery -ParameterFilter { $Query -like '*SigninLogs*' } {
+                @([PSCustomObject]@{
+                    PrincipalId = '<principal-user>'
+                    LastSignIn  = '2026-03-25T10:00:00Z'
+                    SignInCount = '5'
+                })
+            }
+            Mock Invoke-PALogAnalyticsQuery -ParameterFilter { $Query -like '*AuditLogs*' -and $Query -notlike '*OperationName*' } {
+                @([PSCustomObject]@{
+                    PrincipalId   = '<principal-user>'
+                    LastActivity  = '2026-03-20T14:00:00Z'
+                    ActivityCount = '1'
+                })
+            }
+            Mock Invoke-PALogAnalyticsQuery -ParameterFilter { $Query -like '*AzureActivity*' -and $Query -notlike '*OperationNameValue*' } {
+                @()
+            }
+            # Query D: Entra used actions — empty
+            Mock Invoke-PALogAnalyticsQuery -ParameterFilter { $Query -like '*AuditLogs*' -and $Query -like '*OperationName*' } {
+                @()
+            }
+            # Query E: Azure RBAC used actions
+            Mock Invoke-PALogAnalyticsQuery -ParameterFilter { $Query -like '*AzureActivity*' -and $Query -like '*OperationNameValue*' } {
+                @(
+                    [PSCustomObject]@{
+                        PrincipalId        = '<principal-user>'
+                        OperationNameValue = 'Microsoft.Compute/virtualMachines/write'
+                    }
+                )
+            }
+
+            $signalParams = @{
+                Session       = $mockSessionLA
+                Assignments   = $tier3Assignment
+                RoleActionMap = $mockRoleActionMap
+            }
+            $result = Get-PAActivitySignal @signalParams
+
+            $profile = $result.Items | Where-Object { $_.PrincipalId -eq '<principal-user>' }
+            $profile.UsedActions | Should -Contain 'Microsoft.Compute/virtualMachines/write'
+        }
+
+        It 'Does not run UsedActions queries when RoleActionMap is not provided' {
+            Mock Invoke-PALogAnalyticsQuery -ParameterFilter { $Query -like '*SigninLogs*' } {
+                @([PSCustomObject]@{
+                    PrincipalId = '<principal-user>'
+                    LastSignIn  = '2026-03-25T10:00:00Z'
+                    SignInCount = '5'
+                })
+            }
+            Mock Invoke-PALogAnalyticsQuery -ParameterFilter { $Query -like '*AuditLogs*' } {
+                @()
+            }
+            Mock Invoke-PALogAnalyticsQuery -ParameterFilter { $Query -like '*AzureActivity*' } {
+                @()
+            }
+
+            Get-PAActivitySignal -Session $mockSessionLA -Assignments $tier3Assignment
+
+            # The UsedActions queries include 'OperationName' and 'OperationNameValue' in their KQL
+            Should -Invoke Invoke-PALogAnalyticsQuery -ParameterFilter { $Query -like '*summarize by*OperationName*' } -Exactly -Times 0
+        }
+    }
+
+    Context 'Tier 3 — Graph API UsedActions extraction' {
+
+        It 'Extracts Entra UsedActions from directoryAudits activityDisplayName' {
+            $mockRoleActionMap = @{
+                '<entra-role-def-1>' = @('microsoft.directory/users/basic/update')
+            }
+
+            $graphAssignment = @(
+                [PSCustomObject]@{
+                    PSTypeName           = 'PA.Assignment'
+                    PrincipalId          = '<principal-user>'
+                    PrincipalDisplayName = 'Alice Admin'
+                    PrincipalType        = 'User'
+                    RoleDefinitionId     = '<entra-role-def-1>'
+                    Source               = 'EntraRole'
+                }
+            )
+
+            Mock Invoke-PAGraphRequest -ParameterFilter { $Uri -like '*/users*' } {
+                @(
+                    [PSCustomObject]@{
+                        id              = '<principal-user>'
+                        displayName     = 'Alice Admin'
+                        signInActivity  = [PSCustomObject]@{
+                            lastSuccessfulSignInDateTime = '2026-03-25T10:00:00Z'
+                        }
+                    }
+                )
+            }
+            Mock Invoke-PAGraphRequest -ParameterFilter { $Uri -like '*directoryAudits*' } {
+                @(
+                    [PSCustomObject]@{
+                        activityDateTime    = '2026-03-20T14:00:00Z'
+                        activityDisplayName = 'Update user'
+                        category            = 'UserManagement'
+                        initiatedBy         = [PSCustomObject]@{
+                            user = [PSCustomObject]@{ id = '<principal-user>' }
+                            app  = $null
+                        }
+                    }
+                )
+            }
+
+            $signalParams = @{
+                Session       = $mockSessionGraph
+                Assignments   = $graphAssignment
+                RoleActionMap = $mockRoleActionMap
+            }
+            $result = Get-PAActivitySignal @signalParams
+
+            $profile = $result.Items | Where-Object { $_.PrincipalId -eq '<principal-user>' }
+            $profile.UsedActions | Should -Contain 'microsoft.directory/users/basic/update'
+        }
+
+        It 'Warns about Azure RBAC Tier 3 unavailability on Graph API path' {
+            $mockRoleActionMap = @{
+                '<entra-role-def-1>' = @('microsoft.directory/users/basic/update')
+            }
+
+            $graphAssignment = @(
+                [PSCustomObject]@{
+                    PSTypeName           = 'PA.Assignment'
+                    PrincipalId          = '<principal-user>'
+                    PrincipalDisplayName = 'Alice Admin'
+                    PrincipalType        = 'User'
+                    RoleDefinitionId     = '<entra-role-def-1>'
+                    Source               = 'EntraRole'
+                }
+            )
+
+            Mock Invoke-PAGraphRequest -ParameterFilter { $Uri -like '*/users*' } { @() }
+            Mock Invoke-PAGraphRequest -ParameterFilter { $Uri -like '*directoryAudits*' } { @() }
+
+            $signalParams = @{
+                Session       = $mockSessionGraph
+                Assignments   = $graphAssignment
+                RoleActionMap = $mockRoleActionMap
+            }
+            $result = Get-PAActivitySignal @signalParams
+
+            $result.Warnings.Where({ $_ -like '*Azure RBAC Tier 3*Log Analytics*' }).Count | Should -BeGreaterThan 0
         }
     }
 }

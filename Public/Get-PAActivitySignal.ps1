@@ -1,4 +1,4 @@
-#Requires -Version 7.0
+﻿#Requires -Version 7.0
 
 function Get-PAActivitySignal {
     <#
@@ -19,6 +19,11 @@ function Get-PAActivitySignal {
           directoryAudits endpoint. Limited to 30-day lookback for audit
           data. No SP sign-in coverage in v1.0.
 
+        When a RoleActionMap is supplied, the function also collects used
+        action data from AuditLogs and AzureActivity (Log Analytics) or
+        directoryAudits (Graph API), and computes per-principal GrantedActions
+        and UsedActions for Tier 3 gap analysis by Find-PALeastPrivilegeGap.
+
         Activity tiers: 0 = Active (sign-in + role activity), 1 = NoSignIn,
         2 = NoRoleActivity. Tier 3 (action gap) is computed by
         Find-PALeastPrivilegeGap.
@@ -28,6 +33,12 @@ function Get-PAActivitySignal {
     .PARAMETER Assignments
         Array of PA.Assignment objects from collectors. Used to extract
         unique principal IDs and types.
+    .PARAMETER RoleActionMap
+        Hashtable mapping RoleDefinitionId to string arrays of granted
+        actions, as returned by Resolve-PARoleAction. When supplied, the
+        function collects UsedActions from audit logs and computes
+        per-principal GrantedActions on the returned activity profiles.
+        When omitted, GrantedActions and UsedActions remain empty arrays.
     .PARAMETER LookbackDays
         Number of days for the activity lookback window. Defaults to 90.
         Capped at 30 for Graph API path (directoryAudits limitation).
@@ -71,6 +82,9 @@ function Get-PAActivitySignal {
         [PSCustomObject[]]$Assignments,
 
         [Parameter()]
+        [hashtable]$RoleActionMap,
+
+        [Parameter()]
         [ValidateRange(1, 365)]
         [int]$LookbackDays = 90
     )
@@ -82,13 +96,16 @@ function Get-PAActivitySignal {
     # --- Extract unique principals -------------------------------------------
 
     $principalMap = @{}
+    $principalRoleDefIds = @{}
     foreach ($a in $Assignments) {
         if (-not $principalMap.ContainsKey($a.PrincipalId)) {
             $principalMap[$a.PrincipalId] = @{
                 PrincipalType        = $a.PrincipalType
                 PrincipalDisplayName = $a.PrincipalDisplayName
             }
+            $principalRoleDefIds[$a.PrincipalId] = [System.Collections.Generic.HashSet[string]]::new()
         }
+        [void]$principalRoleDefIds[$a.PrincipalId].Add($a.RoleDefinitionId)
     }
 
     $principalIds = @($principalMap.Keys)
@@ -122,6 +139,7 @@ function Get-PAActivitySignal {
 
     $signInMap = @{}
     $roleActivityMap = @{}
+    $usedActionMap = @{}
 
     try {
         if ($useLogAnalytics) {
@@ -248,6 +266,79 @@ AzureActivity
             if ($signInFailed -and $auditFailed) {
                 throw 'Both sign-in and audit queries failed — no activity data available'
             }
+
+            # --- Tier 3: UsedActions queries (only when RoleActionMap provided) ---
+
+            if ($RoleActionMap -and $RoleActionMap.Count -gt 0) {
+                # Query D: Entra used actions (distinct OperationName/Category per principal)
+                try {
+                    Write-Verbose 'Get-PAActivitySignal: querying Entra used actions (Log Analytics)'
+                    $entraUsedKql = @"
+let ids = dynamic([$idListKql]);
+AuditLogs
+| extend InitiatorId = tostring(coalesce(InitiatedBy.user.id, InitiatedBy.app.objectId))
+| where InitiatorId in (ids)
+| summarize by PrincipalId=InitiatorId, OperationName, Category
+"@
+                    $entraUsedParams = @{
+                        WorkspaceId = $Session.WorkspaceId
+                        Query       = $entraUsedKql
+                        Timespan    = $timespan
+                    }
+                    $entraUsedRows = Invoke-PALogAnalyticsQuery @entraUsedParams
+
+                    foreach ($row in $entraUsedRows) {
+                        $namespace = Resolve-PAOperationNamespace -OperationName $row.OperationName -Category $row.Category
+                        if ($namespace) {
+                            if (-not $usedActionMap.ContainsKey($row.PrincipalId)) {
+                                $usedActionMap[$row.PrincipalId] = [System.Collections.Generic.HashSet[string]]::new(
+                                    [System.StringComparer]::OrdinalIgnoreCase
+                                )
+                            }
+                            [void]$usedActionMap[$row.PrincipalId].Add($namespace)
+                        }
+                    }
+                    Write-Verbose "Get-PAActivitySignal: Entra used actions for $($usedActionMap.Count) principals"
+                }
+                catch {
+                    $ex = $_
+                    $warnings.Add("Entra used actions query failed: $($ex.Exception.Message)")
+                    Write-Warning "Get-PAActivitySignal: Entra used actions query failed — $($ex.Exception.Message)"
+                }
+
+                # Query E: Azure RBAC used actions (distinct OperationNameValue per principal)
+                try {
+                    Write-Verbose 'Get-PAActivitySignal: querying Azure RBAC used actions (Log Analytics)'
+                    $azureUsedKql = @"
+let ids = dynamic([$idListKql]);
+AzureActivity
+| where Caller in (ids)
+| where OperationNameValue != ""
+| summarize by PrincipalId=Caller, OperationNameValue
+"@
+                    $azureUsedParams = @{
+                        WorkspaceId = $Session.WorkspaceId
+                        Query       = $azureUsedKql
+                        Timespan    = $timespan
+                    }
+                    $azureUsedRows = Invoke-PALogAnalyticsQuery @azureUsedParams
+
+                    foreach ($row in $azureUsedRows) {
+                        if (-not $usedActionMap.ContainsKey($row.PrincipalId)) {
+                            $usedActionMap[$row.PrincipalId] = [System.Collections.Generic.HashSet[string]]::new(
+                                [System.StringComparer]::OrdinalIgnoreCase
+                            )
+                        }
+                        [void]$usedActionMap[$row.PrincipalId].Add($row.OperationNameValue)
+                    }
+                    Write-Verbose "Get-PAActivitySignal: Azure RBAC used actions — total principals with used actions: $($usedActionMap.Count)"
+                }
+                catch {
+                    $ex = $_
+                    $warnings.Add("Azure RBAC used actions query failed: $($ex.Exception.Message)")
+                    Write-Warning "Get-PAActivitySignal: Azure RBAC used actions query failed — $($ex.Exception.Message)"
+                }
+            }
         }
         else {
             # =================================================================
@@ -354,6 +445,23 @@ AzureActivity
                                 ActivityCount = 1
                             }
                         }
+
+                        # Tier 3: extract Entra used actions (Graph API path)
+                        if ($RoleActionMap -and $RoleActionMap.Count -gt 0) {
+                            $opName = $audit.activityDisplayName
+                            $opCategory = if ($audit.category) { $audit.category } else { '' }
+                            if ($opName) {
+                                $namespace = Resolve-PAOperationNamespace -OperationName $opName -Category $opCategory
+                                if ($namespace) {
+                                    if (-not $usedActionMap.ContainsKey($initiatorId)) {
+                                        $usedActionMap[$initiatorId] = [System.Collections.Generic.HashSet[string]]::new(
+                                            [System.StringComparer]::OrdinalIgnoreCase
+                                        )
+                                    }
+                                    [void]$usedActionMap[$initiatorId].Add($namespace)
+                                }
+                            }
+                        }
                     }
                 }
                 Write-Verbose "Get-PAActivitySignal: role activity data for $($roleActivityMap.Count) principals"
@@ -362,6 +470,13 @@ AzureActivity
                 $ex = $_
                 $warnings.Add("directoryAudits query failed: $($ex.Exception.Message)")
                 Write-Warning "Get-PAActivitySignal: directoryAudits query failed — $($ex.Exception.Message)"
+            }
+
+            # Note: Azure RBAC Tier 3 UsedActions not available on Graph API path
+            # (no AzureActivity equivalent). Use -WorkspaceId for Azure RBAC Tier 3.
+            if ($RoleActionMap -and $RoleActionMap.Count -gt 0) {
+                $warnings.Add('Graph API path: Azure RBAC Tier 3 (used actions from AzureActivity) requires Log Analytics. Use -WorkspaceId for Azure RBAC Tier 3 gap analysis.')
+                Write-Warning 'Get-PAActivitySignal: Azure RBAC Tier 3 requires Log Analytics — Entra-only Tier 3 available on Graph path'
             }
         }
 
@@ -401,12 +516,35 @@ AzureActivity
                 0  # Active
             }
 
+            # Tier 3: GrantedActions and UsedActions (when RoleActionMap provided)
+            $grantedActions = @()
+            $usedActions = @()
+            if ($RoleActionMap -and $RoleActionMap.Count -gt 0) {
+                $grantedSet = [System.Collections.Generic.HashSet[string]]::new(
+                    [System.StringComparer]::OrdinalIgnoreCase
+                )
+                foreach ($roleDefId in $principalRoleDefIds[$principalId]) {
+                    if ($RoleActionMap.ContainsKey($roleDefId)) {
+                        foreach ($action in $RoleActionMap[$roleDefId]) {
+                            [void]$grantedSet.Add($action)
+                        }
+                    }
+                }
+                $grantedActions = @($grantedSet)
+
+                if ($usedActionMap.ContainsKey($principalId)) {
+                    $usedActions = @($usedActionMap[$principalId])
+                }
+            }
+
             $profileParams = @{
                 PrincipalId              = $principalId
                 PrincipalDisplayName     = $principal.PrincipalDisplayName
                 PrincipalType            = $principal.PrincipalType
                 LastSignInDateTime       = $lastSignIn
                 LastRoleActivityDateTime = $lastRoleActivity
+                GrantedActions           = $grantedActions
+                UsedActions              = $usedActions
                 SignInCount              = $signInCount
                 RoleActivityCount        = $roleActivityCount
                 ActivityTier             = $activityTier
