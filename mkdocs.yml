@@ -2,22 +2,33 @@
 # The palette block below is REQUIRED for dark mode. Do not remove.
 site_name: PermissionAnalyzer Documentation
 docs_dir: docs
+repo_url: https://github.com/chaospheremk/PermissionAnalyzer
+repo_name: chaospheremk/PermissionAnalyzer
 
 theme:
   name: material
   palette:
     scheme: slate
     primary: indigo
-    accent: teal
+    accent: amber
   font:
-    text: Roboto
-    code: Roboto Mono
+    text: Inter
+    code: JetBrains Mono
+  icon:
+    repo: fontawesome/brands/github
   features:
     - navigation.sections
     - navigation.top
     - navigation.indexes
+    - navigation.footer
+    - navigation.expand
+    - navigation.instant
     - content.code.copy
+    - content.tabs.link
     - search.highlight
+
+extra_css:
+  - stylesheets/extra.css
 
 plugins:
   - search
@@ -25,9 +36,19 @@ plugins:
 markdown_extensions:
   - meta
   - admonition
+  - pymdownx.details
   - pymdownx.highlight:
       anchor_linenums: true
-  - pymdownx.superfences
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.emoji:
+      emoji_index: !!python/name:zensical.extensions.emoji.twemoji
+      emoji_generator: !!python/name:zensical.extensions.emoji.to_svg
   - tables
   - toc:
       permalink: true
+  - attr_list
+  - md_in_html
