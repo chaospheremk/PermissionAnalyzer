@@ -61,7 +61,7 @@ function New-PARemediationScript {
     function Get-ScriptHeader {
         param([string]$ActionType, [int]$Count, [string]$Id)
         $timestamp = [datetime]::UtcNow.ToString('yyyy-MM-dd HH:mm:ss UTC')
-        return @"
+        @"
 #Requires -Version 7.0
 # ============================================================
 # PA Remediation Script — $ActionType
@@ -159,7 +159,7 @@ param()
             }
         }
 
-        return $sb.ToString()
+        $sb.ToString()
     }
 
     function Get-DowngradeScriptBody {
@@ -200,7 +200,7 @@ param()
             [void]$sb.AppendLine('')
         }
 
-        return $sb.ToString()
+        $sb.ToString()
     }
 
     function Get-ConsolidateScriptBody {
@@ -262,7 +262,7 @@ param()
             [void]$sb.AppendLine('')
         }
 
-        return $sb.ToString()
+        $sb.ToString()
     }
 
     function Get-ReviewEligibleScriptBody {
@@ -289,7 +289,7 @@ param()
             [void]$sb.AppendLine('')
         }
 
-        return $sb.ToString()
+        $sb.ToString()
     }
 
     function Get-ReduceScopeScriptBody {
@@ -313,7 +313,7 @@ param()
             [void]$sb.AppendLine('')
         }
 
-        return $sb.ToString()
+        $sb.ToString()
     }
 
     # --- Main function body ---
@@ -349,7 +349,8 @@ param()
                 GeneratedAt     = [datetime]::UtcNow
                 Duration        = $stopwatch.Elapsed
             }
-            return $result
+            $result
+            return
         }
 
         # Group findings by RemediationAction
@@ -409,7 +410,7 @@ param()
 
         Write-Verbose "New-PARemediationScript: $($scriptPaths.Count) script(s) written in $($stopwatch.Elapsed.TotalSeconds.ToString('F1'))s"
 
-        return $result
+        $result
     }
     catch {
         $ex = $_

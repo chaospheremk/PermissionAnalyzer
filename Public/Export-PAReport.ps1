@@ -355,7 +355,7 @@ function Export-PAReport {
 
         Write-Verbose "Export-PAReport: $($outputFiles.Count) file(s) written in $($stopwatch.Elapsed.TotalSeconds.ToString('F1'))s"
 
-        return $result
+        $result
     }
     catch {
         $ex = $_

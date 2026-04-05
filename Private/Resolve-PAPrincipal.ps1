@@ -44,7 +44,8 @@ function Resolve-PAPrincipal {
     )
 
     if (-not $PrincipalIds -or $PrincipalIds.Count -eq 0) {
-        return @{}
+        @{}
+        return
     }
 
     $uniqueIds = @($PrincipalIds | Select-Object -Unique)
@@ -90,5 +91,5 @@ function Resolve-PAPrincipal {
     $resolvedCount = $resolved.Values.Where({ $_ -notlike '`[Deleted*' }).Count
     Write-Verbose "Resolve-PAPrincipal: resolved $resolvedCount of $($uniqueIds.Count) principal IDs"
 
-    return $resolved
+    $resolved
 }

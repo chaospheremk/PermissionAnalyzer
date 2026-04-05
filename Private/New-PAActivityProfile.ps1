@@ -150,5 +150,5 @@ function New-PAActivityProfile {
         EvaluatedAt                = $EvaluatedAt
     }
 
-    return $result
+    $result
 }

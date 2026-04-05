@@ -101,8 +101,8 @@ Describe 'Connect-PASession' {
             $script:mgCallCount = 0
             Mock Get-MgContext {
                 $script:mgCallCount++
-                if ($script:mgCallCount -eq 1) { return $null }
-                return $mockGraphContext
+                if ($script:mgCallCount -eq 1) { return }
+                $mockGraphContext
             }
             Mock Connect-MgGraph {}
             Mock Get-AzContext { $mockAzContext }
@@ -117,8 +117,8 @@ Describe 'Connect-PASession' {
             $script:mgCallCount = 0
             Mock Get-MgContext {
                 $script:mgCallCount++
-                if ($script:mgCallCount -eq 1) { return $null }
-                return $mockGraphContext
+                if ($script:mgCallCount -eq 1) { return }
+                $mockGraphContext
             }
             Mock Connect-MgGraph {}
             Mock Get-AzContext { $mockAzContext }
@@ -136,8 +136,8 @@ Describe 'Connect-PASession' {
             $script:azCallCount = 0
             Mock Get-AzContext {
                 $script:azCallCount++
-                if ($script:azCallCount -eq 1) { return $null }
-                return $mockAzContext
+                if ($script:azCallCount -eq 1) { return }
+                $mockAzContext
             }
             Mock Connect-AzAccount {}
             Mock Get-AzSubscription { $mockSubscriptions }
@@ -152,8 +152,8 @@ Describe 'Connect-PASession' {
             $script:azCallCount = 0
             Mock Get-AzContext {
                 $script:azCallCount++
-                if ($script:azCallCount -eq 1) { return $null }
-                return $mockAzContext
+                if ($script:azCallCount -eq 1) { return }
+                $mockAzContext
             }
             Mock Connect-AzAccount {}
             Mock Get-AzSubscription { $mockSubscriptions }
