@@ -145,7 +145,8 @@ function Invoke-PAGraphRequest {
         }
         elseif ($pageCount -eq 1) {
             # Single-object response (no .value property, no pagination)
-            return $response
+            $response
+            return
         }
 
         Write-Verbose "Invoke-PAGraphRequest: page $pageCount ($($allResults.Count) items so far)"
@@ -157,5 +158,5 @@ function Invoke-PAGraphRequest {
         Write-Warning "Invoke-PAGraphRequest: stopped at $MaxPages pages ($($allResults.Count) items). Results may be incomplete."
     }
 
-    return $allResults.ToArray()
+    $allResults.ToArray()
 }

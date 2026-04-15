@@ -1,4 +1,4 @@
-﻿#Requires -Version 7.0
+#Requires -Version 7.0
 
 function Invoke-PAPermissionAudit {
     <#
@@ -442,7 +442,7 @@ function Invoke-PAPermissionAudit {
 
         Write-Verbose "Invoke-PAPermissionAudit: complete — $($allFindings.Count) findings, $($auditStopwatch.Elapsed.TotalSeconds.ToString('F1'))s"
 
-        return $result
+        $result
     }
     catch {
         $ex = $_

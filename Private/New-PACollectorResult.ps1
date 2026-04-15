@@ -83,5 +83,5 @@ function New-PACollectorResult {
         Timestamp  = $Timestamp
     }
 
-    return $result
+    $result
 }

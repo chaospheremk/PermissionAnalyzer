@@ -1,4 +1,4 @@
-﻿#Requires -Version 7.0
+#Requires -Version 7.0
 
 function Resolve-PARoleAction {
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
@@ -62,7 +62,8 @@ function Resolve-PARoleAction {
     $roleActionMap = @{}
 
     if ($Assignments.Count -eq 0) {
-        return $roleActionMap
+        $roleActionMap
+        return
     }
 
     # --- Classify assignments by source type ---------------------------------
@@ -193,5 +194,5 @@ function Resolve-PARoleAction {
         }
     }
 
-    return $roleActionMap
+    $roleActionMap
 }

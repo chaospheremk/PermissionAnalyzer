@@ -111,5 +111,5 @@ function Invoke-PALogAnalyticsQuery {
     $workspaceShort = $WorkspaceId.Substring(0, [math]::Min(8, $WorkspaceId.Length))
     Write-Verbose "Invoke-PALogAnalyticsQuery: workspace $workspaceShort..., $($results.Count) rows, $($stopwatch.Elapsed.TotalSeconds.ToString('F1'))s"
 
-    return $results
+    $results
 }

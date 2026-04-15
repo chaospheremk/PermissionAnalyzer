@@ -161,5 +161,5 @@ function New-PAAssignment {
         ConsentType         = $ConsentType
     }
 
-    return $result
+    $result
 }
