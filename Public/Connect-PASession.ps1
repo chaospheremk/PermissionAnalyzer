@@ -187,5 +187,5 @@ function Connect-PASession {
 
     Write-Verbose "Connect-PASession: session created (RunId: $($session.RunId), Auth: $authMethod, Subscriptions: $($subscriptionIds.Count))"
 
-    return $session
+    $session
 }

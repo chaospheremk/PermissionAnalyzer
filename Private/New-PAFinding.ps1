@@ -158,5 +158,5 @@ function New-PAFinding {
         CreatedAt           = $CreatedAt
     }
 
-    return $result
+    $result
 }

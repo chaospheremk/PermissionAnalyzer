@@ -83,5 +83,5 @@ function New-PAValidationResult {
         Notes            = $Notes
     }
 
-    return $result
+    $result
 }

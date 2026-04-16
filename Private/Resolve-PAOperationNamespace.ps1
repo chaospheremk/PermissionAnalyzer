@@ -68,17 +68,19 @@ function Resolve-PAOperationNamespace {
     # Tier 1: explicit mapping (exact match)
     $explicit = $script:PAOperationMap.explicitMappings.$OperationName
     if ($explicit) {
-        return $explicit
+        $explicit
+        return
     }
 
     # Tier 2: category-to-namespace inference
     if ($Category -ne '') {
         $categoryNamespace = $script:PAOperationMap.categoryToNamespace.$Category
         if ($categoryNamespace) {
-            return $categoryNamespace
+            $categoryNamespace
+            return
         }
     }
 
     # Tier 3: unmapped
-    return $null
+    return
 }
