@@ -1,0 +1,12 @@
+[
+    {
+        "PrincipalId": "11111111-aaaa-1111-1111-111111111111",
+        "LastActivity": "RELATIVE:-5d",
+        "ActivityCount": "4"
+    },
+    {
+        "PrincipalId": "44444444-aaaa-4444-4444-444444444444",
+        "LastActivity": "RELATIVE:-5d",
+        "ActivityCount": "6"
+    }
+]

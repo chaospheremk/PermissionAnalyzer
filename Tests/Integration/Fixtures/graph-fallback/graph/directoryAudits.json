@@ -1,0 +1,14 @@
+[
+    {
+        "id": "audit-0001",
+        "activityDateTime": "RELATIVE:-5d",
+        "activityDisplayName": "Update user",
+        "category": "UserManagement",
+        "initiatedBy": {
+            "user": {
+                "id": "11111111-aaaa-1111-1111-111111111111",
+                "displayName": "Alice Active"
+            }
+        }
+    }
+]

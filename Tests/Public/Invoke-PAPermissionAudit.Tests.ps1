@@ -3,6 +3,7 @@
 
 BeforeAll {
     . (Join-Path $PSScriptRoot '../../Public/Invoke-PAPermissionAudit.ps1')
+    . (Join-Path $PSScriptRoot '../TestHelpers.ps1')
 
     # Stubs for public functions that the orchestrator calls.
     # These are overridden by Mock inside Describe/Context blocks.
@@ -19,47 +20,6 @@ BeforeAll {
     function Export-PAReport                { param($Findings, $OutputDirectory, $Format, $RunId) }
     function New-PARemediationScript        { param($Findings, $OutputDirectory, $RunId) }
     function Test-PAFindingAccuracy         { param($Findings, $Session) }
-
-    # -------------------------------------------------------------------------
-    # Helper: PA.Session
-    # -------------------------------------------------------------------------
-    function New-MockSession {
-        [PSCustomObject]@{
-            PSTypeName      = 'PA.Session'
-            TenantId        = '<tenant-id>'
-            Environment     = 'Global'
-            SubscriptionIds = @('<sub-id-1>')
-            WorkspaceId     = '<workspace-id>'
-            RunId           = 'test-run-001'
-            StartTime       = [datetime]::UtcNow
-        }
-    }
-
-    # -------------------------------------------------------------------------
-    # Helper: PA.CollectorResult
-    # -------------------------------------------------------------------------
-    function New-MockCollectorResult {
-        [CmdletBinding()]
-        param(
-            [ValidateNotNullOrEmpty()]
-            [string]$Collector,
-
-            [string]$Status = 'Complete',
-
-            [object[]]$Items = @()
-        )
-        [PSCustomObject]@{
-            PSTypeName = 'PA.CollectorResult'
-            Collector  = $Collector
-            Status     = $Status
-            Items      = $Items
-            ItemCount  = $Items.Count
-            Errors     = @()
-            Warnings   = @()
-            Duration   = [timespan]::FromSeconds(1)
-            Timestamp  = [datetime]::UtcNow
-        }
-    }
 }
 
 Describe 'Invoke-PAPermissionAudit' {
