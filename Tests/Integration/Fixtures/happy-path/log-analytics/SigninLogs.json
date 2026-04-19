@@ -1,0 +1,17 @@
+[
+    {
+        "PrincipalId": "11111111-aaaa-1111-1111-111111111111",
+        "LastSignIn": "RELATIVE:-5d",
+        "SignInCount": "12"
+    },
+    {
+        "PrincipalId": "33333333-aaaa-3333-3333-333333333333",
+        "LastSignIn": "RELATIVE:-5d",
+        "SignInCount": "3"
+    },
+    {
+        "PrincipalId": "44444444-aaaa-4444-4444-444444444444",
+        "LastSignIn": "RELATIVE:-5d",
+        "SignInCount": "40"
+    }
+]

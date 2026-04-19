@@ -8,6 +8,7 @@ BeforeAll {
     . (Join-Path $PSScriptRoot '../../Private/New-PAActivityProfile.ps1')
     . (Join-Path $PSScriptRoot '../../Private/New-PACollectorResult.ps1')
     . (Join-Path $PSScriptRoot '../../Private/Resolve-PAOperationNamespace.ps1')
+    . (Join-Path $PSScriptRoot '../TestHelpers.ps1')
 
     # Reset the Resolve-PAOperationNamespace cache so it loads the real map
     $script:PAOperationMap = $null
@@ -20,21 +21,8 @@ BeforeAll {
 Describe 'Get-PAActivitySignal' {
 
     BeforeAll {
-        $mockSessionLA = [PSCustomObject]@{
-            PSTypeName      = 'PA.Session'
-            TenantId        = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'
-            Environment     = 'Global'
-            WorkspaceId     = '<workspace-id>'
-            SubscriptionIds = @('<sub-id-1>')
-        }
-
-        $mockSessionGraph = [PSCustomObject]@{
-            PSTypeName      = 'PA.Session'
-            TenantId        = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'
-            Environment     = 'Global'
-            WorkspaceId     = ''
-            SubscriptionIds = @('<sub-id-1>')
-        }
+        $mockSessionLA = New-MockSession -TenantId 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'
+        $mockSessionGraph = New-MockSession -TenantId 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee' -WorkspaceId ''
 
         $mockAssignments = @(
             [PSCustomObject]@{

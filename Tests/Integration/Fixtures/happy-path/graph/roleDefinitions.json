@@ -1,0 +1,41 @@
+[
+    {
+        "id": "62e90394-69f5-4237-9190-012177145e10",
+        "displayName": "Global Administrator",
+        "isBuiltIn": true,
+        "rolePermissions": [
+            { "allowedResourceActions": ["microsoft.directory/users/basic/update"] }
+        ]
+    },
+    {
+        "id": "194ae4cb-b126-40b2-bd5b-6091b380977d",
+        "displayName": "Security Administrator",
+        "isBuiltIn": true,
+        "rolePermissions": [
+            { "allowedResourceActions": ["microsoft.directory/users/authentication/standard/read"] }
+        ]
+    },
+    {
+        "id": "729827e3-9c14-49f7-bb1b-9608f156bbb8",
+        "displayName": "Helpdesk Administrator",
+        "isBuiltIn": true,
+        "rolePermissions": [
+            { "allowedResourceActions": ["microsoft.directory/users/password/update"] }
+        ]
+    },
+    {
+        "id": "9b895d92-2cd3-44c7-9d02-a6ac2d5ea5c3",
+        "displayName": "Application Administrator",
+        "isBuiltIn": true,
+        "rolePermissions": [
+            {
+                "allowedResourceActions": [
+                    "microsoft.directory/applications/basic/update",
+                    "microsoft.directory/servicePrincipals/basic/update",
+                    "microsoft.directory/applicationTemplates/instantiate",
+                    "microsoft.directory/appRoleAssignments/create"
+                ]
+            }
+        ]
+    }
+]

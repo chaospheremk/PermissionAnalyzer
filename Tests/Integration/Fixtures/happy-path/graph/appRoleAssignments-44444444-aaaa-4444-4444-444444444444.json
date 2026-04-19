@@ -1,0 +1,12 @@
+[
+    {
+        "id": "arat-0001",
+        "principalId": "44444444-aaaa-4444-4444-444444444444",
+        "principalDisplayName": "DeployBot",
+        "principalType": "ServicePrincipal",
+        "appRoleId": "00000000-0000-0000-0000-000000000000",
+        "resourceId": "99999999-aaaa-9999-9999-999999999999",
+        "resourceDisplayName": "SomeTargetApp",
+        "createdDateTime": "RELATIVE:-30d"
+    }
+]
