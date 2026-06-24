@@ -51,7 +51,7 @@ jobs:
         run: echo "week=$(date +%Y-W%V)" >> $GITHUB_OUTPUT
 
       - name: Cache PowerShell modules
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.local/share/powershell/Modules
           key: ps-lint-${{ steps.week.outputs.week }}-${{ hashFiles('.github/workflows/ci.yml') }}
@@ -88,7 +88,7 @@ jobs:
         run: echo "week=$(date +%Y-W%V)" >> $GITHUB_OUTPUT
 
       - name: Cache PowerShell modules
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.local/share/powershell/Modules
           key: ps-test-${{ steps.week.outputs.week }}-${{ hashFiles('.github/workflows/ci.yml') }}
@@ -167,7 +167,7 @@ jobs:
         run: echo "week=$(date +%Y-W%V)" >> $GITHUB_OUTPUT
 
       - name: Cache PowerShell modules
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.local/share/powershell/Modules
           key: ps-docs-${{ steps.week.outputs.week }}-${{ hashFiles('.github/workflows/ci.yml') }}
