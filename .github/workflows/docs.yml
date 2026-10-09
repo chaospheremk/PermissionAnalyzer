@@ -40,14 +40,14 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Get cache week
         id: week
         run: echo "week=$(date +%Y-W%V)" >> $GITHUB_OUTPUT
 
       - name: Cache PowerShell modules
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.local/share/powershell/Modules
           # ps-site- (not ps-docs-): ci.yml's docs-check owns the ps-docs- prefix, and a
@@ -97,7 +97,7 @@ jobs:
           Write-Host "Exported MAML for $($imported.Count) commands"
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: '3.12'
           cache: 'pip'
