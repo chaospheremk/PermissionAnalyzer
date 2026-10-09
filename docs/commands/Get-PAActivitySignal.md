@@ -21,7 +21,7 @@ Collects activity signals per principal from Log Analytics or Graph API.
 
 ```
 Get-PAActivitySignal [-Session] <psobject> [-Assignments] <psobject[]>
- [[-RoleActionMap] <hashtable>] [[-LookbackDays] <int>] [<CommonParameters>]
+ [[-RoleActionMap] <hashtable>] [[-LookbackDays] <int>]
 ```
 
 ## ALIASES

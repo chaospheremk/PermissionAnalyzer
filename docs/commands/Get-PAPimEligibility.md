@@ -20,7 +20,7 @@ Collects PIM eligible assignments from Entra ID and Azure RBAC.
 ### __AllParameterSets
 
 ```
-Get-PAPimEligibility [-Session] <psobject> [<CommonParameters>]
+Get-PAPimEligibility [-Session] <psobject>
 ```
 
 ## ALIASES

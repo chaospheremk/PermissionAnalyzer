@@ -182,8 +182,11 @@ jobs:
                   Install-Module -Name $mod -Force -Scope CurrentUser
               }
           }
-          if (-not (Get-Module -ListAvailable -Name Microsoft.PowerShell.PlatyPS)) {
-              Install-PSResource -Name Microsoft.PowerShell.PlatyPS -Scope CurrentUser -TrustRepository
+          # Exact version from build.config.psd1: a restored cache may hold a different one
+          $platyPSVersion = (Import-PowerShellDataFile ./build.config.psd1).PlatyPSVersion
+          $installed = @(Get-Module -ListAvailable -Name Microsoft.PowerShell.PlatyPS).Where({ $_.Version -eq $platyPSVersion })
+          if (-not $installed) {
+              Install-PSResource -Name Microsoft.PowerShell.PlatyPS -Version $platyPSVersion -Scope CurrentUser -TrustRepository
           }
 
           # Install module dependencies for Import-Module during doc generation

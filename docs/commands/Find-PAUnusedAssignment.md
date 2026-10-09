@@ -21,7 +21,7 @@ Identifies unused role assignments based on activity analysis.
 
 ```
 Find-PAUnusedAssignment [-Assignments] <psobject[]> [-ActivityProfiles] <psobject[]>
- [[-InactivityThresholdDays] <int>] [<CommonParameters>]
+ [[-InactivityThresholdDays] <int>]
 ```
 
 ## ALIASES

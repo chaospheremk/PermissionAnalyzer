@@ -20,7 +20,7 @@ Collects Entra ID directory role assignments from a tenant.
 ### __AllParameterSets
 
 ```
-Get-PAEntraRoleAssignment [-Session] <psobject> [<CommonParameters>]
+Get-PAEntraRoleAssignment [-Session] <psobject>
 ```
 
 ## ALIASES

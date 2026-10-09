@@ -20,7 +20,7 @@ Collects Azure RBAC role assignments across in-scope subscriptions.
 ### __AllParameterSets
 
 ```
-Get-PAAzureRbacAssignment [-Session] <psobject> [<CommonParameters>]
+Get-PAAzureRbacAssignment [-Session] <psobject>
 ```
 
 ## ALIASES

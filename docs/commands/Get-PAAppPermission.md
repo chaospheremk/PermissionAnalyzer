@@ -20,7 +20,7 @@ Collects application permissions and delegated permission grants from a tenant.
 ### __AllParameterSets
 
 ```
-Get-PAAppPermission [-Session] <psobject> [<CommonParameters>]
+Get-PAAppPermission [-Session] <psobject>
 ```
 
 ## ALIASES

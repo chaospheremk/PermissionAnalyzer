@@ -21,7 +21,6 @@ Identifies opportunities to consolidate individual role assignments into groups.
 
 ```
 Find-PAGroupConsolidation [-Assignments] <psobject[]> [[-MinimumGroupSize] <int>]
- [<CommonParameters>]
 ```
 
 ## ALIASES
