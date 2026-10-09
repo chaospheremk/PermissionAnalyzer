@@ -20,7 +20,7 @@ Re-validates findings against current tenant state.
 ### __AllParameterSets
 
 ```
-Test-PAFindingAccuracy [-Findings] <psobject[]> [-Session] <psobject> [<CommonParameters>]
+Test-PAFindingAccuracy [-Findings] <psobject[]> [-Session] <psobject>
 ```
 
 ## ALIASES

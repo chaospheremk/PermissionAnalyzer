@@ -21,7 +21,7 @@ Exports findings to CSV, JSON, and/or HTML report files.
 
 ```
 Export-PAReport [-Findings] <psobject[]> [-OutputDirectory] <string> [[-Format] <string[]>]
- [[-RunId] <string>] [<CommonParameters>]
+ [[-RunId] <string>]
 ```
 
 ## ALIASES

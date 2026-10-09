@@ -24,7 +24,6 @@ Invoke-PAPermissionAudit [-TenantId] <string> [[-Environment] <string>]
  [[-SubscriptionId] <string[]>] [[-WorkspaceId] <string>] [-OutputDirectory] <string>
  [[-LookbackDays] <int>] [[-InactivityThresholdDays] <int>] [[-GapThreshold] <double>]
  [[-MinimumGroupSize] <int>] [[-Format] <string[]>] [-SkipRemediation] [-SkipValidation]
- [<CommonParameters>]
 ```
 
 ## ALIASES

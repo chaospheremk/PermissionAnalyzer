@@ -1,9 +1,36 @@
+# Dependabot configuration for automated dependency updates
+# Copy to: code/.github/dependabot.yml
+#
+# Creates PRs automatically when new versions of GitHub Actions or
+# Python packages are available. PRs target the default branch (main).
+# cooldown: a release must be 14 days old before Dependabot proposes it,
+# so a compromised release has time to be caught and yanked first; this
+# matters because dependabot-automerge.yml merges Actions bumps once CI
+# Gate passes. Security updates ignore the cooldown.
+#
+# groups: all GitHub Actions updates (majors included) arrive as one PR per
+# week. With strict branch protection, separate PRs stall each other: the
+# first to merge leaves the rest behind main, and auto-merge never updates a
+# branch. Trade-off: one broken update holds the group — exclude that action
+# from the group (or add an ignore) until it is fixed.
+#
+# Repos whose requirements.txt files live in subfolders (one site per
+# module) need one pip entry per directory.
+#
+# The labels below must exist in the repo:
+#   gh label create dependencies --repo chaospheremk/<repo> --color 0366d6
+
 version: 2
 updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 14
+    groups:
+      github-actions:
+        patterns: ["*"]
     labels:
       - "dependencies"
 
@@ -11,5 +38,7 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 14
     labels:
       - "dependencies"

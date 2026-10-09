@@ -21,7 +21,6 @@ Generates runnable remediation scripts from analysis findings.
 
 ```
 New-PARemediationScript [-Findings] <psobject[]> [-OutputDirectory] <string> [[-RunId] <string>]
- [<CommonParameters>]
 ```
 
 ## ALIASES

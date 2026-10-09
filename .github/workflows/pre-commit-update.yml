@@ -1,12 +1,17 @@
 # Automated pre-commit hook version updates
-# Runs weekly to check for newer versions of pre-commit hooks.
-# Creates a PR on dev if updates are found.
+# Copy to: code/.github/workflows/pre-commit-update.yml
+#
+# Runs weekly to check for newer versions of pre-commit hooks
+# (e.g., TruffleHog). Creates a PR against main if updates are found —
+# the same path Dependabot uses. It branches from main, so the PR carries
+# only the hook bump; sync-dev merges it back into dev afterwards.
+# Works unchanged for trunk-based repos.
 
 name: Update Pre-Commit Hooks
 
 on:
   schedule:
-    - cron: '0 9 * * 1'
+    - cron: '0 9 * * 1'    # Every Monday at 9 AM UTC
   workflow_dispatch:
 
 permissions:
@@ -21,7 +26,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: dev
+          ref: main
 
       - uses: actions/setup-python@v6
         with:

@@ -21,7 +21,7 @@ Identifies over-privileged access by comparing granted vs used permissions.
 
 ```
 Find-PALeastPrivilegeGap [-Assignments] <psobject[]> [-ActivityProfiles] <psobject[]>
- [[-RoleActionMap] <hashtable>] [[-GapThreshold] <double>] [<CommonParameters>]
+ [[-RoleActionMap] <hashtable>] [[-GapThreshold] <double>]
 ```
 
 ## ALIASES

@@ -1,0 +1,49 @@
+# Dependabot auto-merge for GitHub Actions updates
+# Copy to: code/.github/workflows/dependabot-automerge.yml
+#
+# Enables GitHub auto-merge on Dependabot PRs that update GitHub Actions.
+# The merge itself waits for the branch protection's required CI Gate check,
+# so nothing merges without green CI.
+#
+# Scope:
+#   - github-actions ecosystem → auto-merge
+#   - pip (Zensical) → never: 0.0.x releases can break the docs build, and
+#     code-repo CI does not build the site. Test those locally first.
+#
+# Security: pull_request_target runs with a write token in the context of the
+# base branch. This workflow never checks out or runs PR code — it only reads
+# Dependabot metadata and calls the GitHub API.
+#
+# Requires: repo setting "Allow auto-merge" and branch protection on main with
+# the CI Gate required check.
+#
+# Known limit: a merge performed with GITHUB_TOKEN does not trigger push
+# workflows, so sync-dev picks the bump up on the next ordinary push to main.
+
+name: Dependabot Auto-Merge
+
+on: pull_request_target
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  automerge:
+    name: Enable auto-merge
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Fetch Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Enable auto-merge for GitHub Actions updates
+        if: contains(steps.metadata.outputs.package-ecosystem, 'actions')
+        run: gh pr merge --auto --merge "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

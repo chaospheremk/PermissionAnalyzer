@@ -21,7 +21,7 @@ Establishes Graph and Azure connections and returns a PA.Session object.
 
 ```
 Connect-PASession [-TenantId] <string> [[-WorkspaceId] <string>] [[-SubscriptionId] <string[]>]
- [[-Environment] <string>] [<CommonParameters>]
+ [[-Environment] <string>]
 ```
 
 ## ALIASES

@@ -50,15 +50,20 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ~/.local/share/powershell/Modules
-          key: ps-docs-${{ steps.week.outputs.week }}-${{ hashFiles('.github/workflows/docs.yml') }}
+          # ps-site- (not ps-docs-): ci.yml's docs-check owns the ps-docs- prefix, and a
+          # shared prefix lets either workflow restore the other's module set
+          key: ps-site-${{ steps.week.outputs.week }}-${{ hashFiles('.github/workflows/docs.yml') }}
           restore-keys: |
-            ps-docs-
+            ps-site-
 
       - name: Install PlatyPS
         shell: pwsh
         run: |
-          if (-not (Get-Module -ListAvailable -Name Microsoft.PowerShell.PlatyPS)) {
-              Install-PSResource -Name Microsoft.PowerShell.PlatyPS -Scope CurrentUser -TrustRepository
+          # Exact version from build.config.psd1: a restored cache may hold a different one
+          $platyPSVersion = (Import-PowerShellDataFile ./build.config.psd1).PlatyPSVersion
+          $installed = @(Get-Module -ListAvailable -Name Microsoft.PowerShell.PlatyPS).Where({ $_.Version -eq $platyPSVersion })
+          if (-not $installed) {
+              Install-PSResource -Name Microsoft.PowerShell.PlatyPS -Version $platyPSVersion -Scope CurrentUser -TrustRepository
           }
 
       - name: Install PowerShell dependencies
@@ -79,7 +84,8 @@ jobs:
         shell: pwsh
         run: |
           Import-Module ./PermissionAnalyzer.psd1 -Force
-          Import-Module Microsoft.PowerShell.PlatyPS
+          $platyPSVersion = (Import-PowerShellDataFile ./build.config.psd1).PlatyPSVersion
+          Import-Module Microsoft.PowerShell.PlatyPS -RequiredVersion $platyPSVersion
 
           New-Item -ItemType Directory -Path ./en-US -Force | Out-Null
           $measured = Measure-PlatyPSMarkdown -Path ./docs/commands/*.md

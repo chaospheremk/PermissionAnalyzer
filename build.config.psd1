@@ -13,4 +13,8 @@
     CoverageThreshold = 50
     CoverageFormat    = 'JaCoCo'
     AcrRepoName       = 'HomeACR'
+    # Exact PlatyPS version for Docs/AssertDocsClean and every workflow that installs it.
+    # Minor releases change generated markdown (1.0.2+ drops [<CommonParameters>] from
+    # syntax blocks), so local and CI output only match on one version.
+    PlatyPSVersion    = '1.0.3'
 }
